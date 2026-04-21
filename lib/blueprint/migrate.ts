@@ -1,6 +1,7 @@
 import { buildFieldLabelLookup } from "@/lib/blueprint/from-fields-schema";
 import type { AfterFieldUpdate, BlueprintDocument, BlueprintTransition, TransitionFormField } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
+import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form-shape";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 import { createDefaultLeadFields } from "@/lib/fields-config/types";
 
@@ -152,11 +153,60 @@ export function migrateTransition(
   };
 }
 
+function syncTransitionFormFieldsWithSchema(
+  transitions: BlueprintTransition[],
+  rows: FieldDefinition[],
+): BlueprintTransition[] {
+  return transitions.map((t) => ({
+    ...t,
+    form: {
+      ...t.form,
+      fields: t.form.fields.map((row) => {
+        const def = rows.find((f) => f.apiKey === row.fieldId);
+        const label = def?.label ?? row.label;
+        if (!def) return { ...row, label };
+
+        const shaped = shapeTransitionFormFieldStorage(def);
+
+        if (def.dataType === "picklist" || def.dataType === "radio") {
+          const allLabels = shaped.picklistOptions;
+          const labelSet = new Set(allLabels);
+          const filtered = row.picklistOptions.filter((l) => labelSet.has(l));
+          const useSubset =
+            row.kind === "picklist" &&
+            filtered.length > 0 &&
+            filtered.length < allLabels.length;
+          return {
+            ...row,
+            kind: "picklist",
+            label,
+            picklistOptions: useSubset ? filtered : allLabels,
+          };
+        }
+
+        if (def.dataType === "multi_select" || def.dataType === "paragraph") {
+          return { ...row, ...shaped, label };
+        }
+
+        if (
+          (row.kind === "picklist" || row.kind === "textarea" || row.kind === "remark") &&
+          (def.dataType === "text" || def.dataType === "url")
+        ) {
+          return { ...row, label };
+        }
+
+        return { ...row, ...shaped, label };
+      }),
+    },
+  }));
+}
+
 export function migrateBlueprintDocument(doc: BlueprintDocument, fieldRows?: FieldDefinition[]): BlueprintDocument {
   const rows = fieldRows ?? createDefaultLeadFields();
   const labelOf = buildFieldLabelLookup(rows);
+  const migrated = doc.transitions.map((t) => migrateTransition({ ...(t as unknown as Record<string, unknown>) }, labelOf));
   return {
     ...doc,
-    transitions: doc.transitions.map((t) => migrateTransition({ ...(t as unknown as Record<string, unknown>) }, labelOf)),
+    transitions: syncTransitionFormFieldsWithSchema(migrated, rows),
   };
 }

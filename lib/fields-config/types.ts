@@ -1,11 +1,13 @@
 import type { FormulaPlan } from "@/lib/fields-config/formula-types";
 import { defaultFormulaPlan } from "@/lib/fields-config/formula-types";
+import { createStandardFieldDefinitions } from "@/lib/fields-config/standard-defaults";
 
 export const FIELD_DATA_TYPES = [
   "text",
   "paragraph",
   "email",
   "phone",
+  "url",
   "picklist",
   "multi_select",
   "date",
@@ -55,12 +57,21 @@ export type FieldDefinition = {
   /** multi_select: option ids */
   defaultOptionIds: string[];
   orderPreference: PicklistOrderPreference;
+  /** number / decimal: max digits (integer part + fractional for decimal, per product spec). */
+  maxDigits?: number;
+  /** decimal only: allowed decimal places */
+  decimalPlaces?: number;
   formulaExpression: string;
   /** When `dataType` is `formula` — structured builder; drives `formulaExpression` when set. */
   formulaPlan?: FormulaPlan;
   isSystem: boolean;
   /** System fields stay on canvas; user can still edit allowed props */
   locked: boolean;
+  /**
+   * When false, field is omitted from the Manage Leads dynamic filter builder.
+   * Omitted or true = show in filters (backward compatible).
+   */
+  includeInFilters?: boolean;
 };
 
 function newOptionId(stableId?: string): string {
@@ -94,93 +105,7 @@ function baseField(partial: Omit<FieldDefinition, "defaultOptionIds" | "orderPre
 }
 
 export function createDefaultLeadFields(): FieldDefinition[] {
-  return [
-    baseField({
-      id: "sys-lead-owner",
-      apiKey: "lead_owner",
-      label: "Lead Owner",
-      dataType: "picklist",
-      required: false,
-      allowDuplicate: true,
-      options: [
-        createOption("Unassigned", "unassigned", "opt-owner-unassigned"),
-        createOption("Round robin", "round_robin", "opt-owner-rr"),
-        createOption("Queue: Sales", "queue_sales", "opt-owner-queue"),
-      ],
-      defaultOptionId: undefined,
-      isSystem: true,
-      locked: true,
-    }),
-    baseField({
-      id: "sys-lead-name",
-      apiKey: "lead_name",
-      label: "Lead Name",
-      dataType: "text",
-      required: true,
-      allowDuplicate: true,
-      options: [],
-      isSystem: true,
-      locked: true,
-    }),
-    baseField({
-      id: "sys-phone",
-      apiKey: "phone",
-      label: "Phone",
-      dataType: "phone",
-      required: false,
-      allowDuplicate: false,
-      options: [],
-      isSystem: true,
-      locked: true,
-    }),
-    baseField({
-      id: "sys-email",
-      apiKey: "email",
-      label: "Email",
-      dataType: "email",
-      required: false,
-      allowDuplicate: false,
-      options: [],
-      isSystem: true,
-      locked: true,
-    }),
-    baseField({
-      id: "sys-source",
-      apiKey: "source",
-      label: "Source",
-      dataType: "picklist",
-      required: false,
-      allowDuplicate: true,
-      options: [
-        createOption("Website", "website", "opt-src-web"),
-        createOption("Partner", "partner", "opt-src-partner"),
-        createOption("Event", "event", "opt-src-event"),
-        createOption("Cold outreach", "cold_outreach", "opt-src-cold"),
-      ],
-      defaultOptionId: undefined,
-      isSystem: true,
-      locked: true,
-    }),
-    baseField({
-      id: "sys-stage",
-      apiKey: "stage",
-      label: "Stage",
-      dataType: "picklist",
-      required: true,
-      allowDuplicate: true,
-      options: [
-        createOption("New", "new", "opt-stage-new"),
-        createOption("Contacted", "contacted", "opt-stage-contacted"),
-        createOption("Qualified", "qualified", "opt-stage-qualified"),
-        createOption("Proposal", "proposal", "opt-stage-proposal"),
-        createOption("Won", "won", "opt-stage-won"),
-        createOption("Lost", "lost", "opt-stage-lost"),
-      ],
-      defaultOptionId: undefined,
-      isSystem: true,
-      locked: true,
-    }),
-  ];
+  return createStandardFieldDefinitions();
 }
 
 const TYPE_DEFAULT_LABEL: Record<FieldDataType, string> = {
@@ -188,6 +113,7 @@ const TYPE_DEFAULT_LABEL: Record<FieldDataType, string> = {
   paragraph: "Paragraph field",
   email: "Email field",
   phone: "Phone field",
+  url: "URL field",
   picklist: "Picklist field",
   multi_select: "Multi-select field",
   date: "Date field",
@@ -219,23 +145,29 @@ export function createFieldFromDataType(dataType: FieldDataType): FieldDefinitio
       isSystem: false,
       locked: false,
       formulaPlan: defaultFormulaPlan(),
+      includeInFilters: false,
     });
   }
 
-  return baseField({
+  const common = {
     id,
     apiKey,
     label: baseLabel,
     dataType,
     required: false,
     allowDuplicate: true,
-    options: withOptions
-      ? [createOption("First choice"), createOption("Second choice")]
-      : [],
+    options: withOptions ? [createOption("First choice"), createOption("Second choice")] : [],
     defaultOptionId: undefined,
     isSystem: false,
     locked: false,
-  });
+    includeInFilters: true,
+  };
+
+  if (dataType === "decimal") {
+    return baseField({ ...common, decimalPlaces: 2 });
+  }
+
+  return baseField(common);
 }
 
 export function optionsSorted(field: FieldDefinition): FieldOption[] {
@@ -250,4 +182,29 @@ export const OPTION_TYPES: FieldDataType[] = ["picklist", "multi_select", "radio
 
 export function usesOptions(dataType: FieldDataType) {
   return OPTION_TYPES.includes(dataType);
+}
+
+/** Types that show “allow duplicate values” in the Fields configurator. */
+export function showsDuplicateControl(dataType: FieldDataType): boolean {
+  return ["text", "paragraph", "email", "phone", "number", "decimal", "url"].includes(dataType);
+}
+
+/** Human-readable data type for the properties panel header. */
+export function dataTypePropertiesTitle(dataType: FieldDataType): string {
+  const titles: Record<FieldDataType, string> = {
+    text: "Text",
+    paragraph: "Paragraph",
+    email: "Email",
+    phone: "Phone",
+    url: "URL",
+    picklist: "Picklist",
+    multi_select: "Multi select",
+    date: "Date",
+    date_time: "Date and Time",
+    number: "Number",
+    decimal: "Decimal",
+    formula: "Calculated field",
+    radio: "Radio button",
+  };
+  return titles[dataType];
 }

@@ -3,8 +3,10 @@
  * Starts `next dev` on the first free port from PORT (default 3000) upward.
  * Avoids EADDRINUSE when an old dev server or another app still holds 3000.
  *
- * Pass `--clean` once to delete `.next` before starting (fixes missing chunk / manifest
- * errors after HMR, interrupted builds, or mixed Turbopack/Webpack runs).
+ * By default we **delete `.next` before every dev start** so webpack’s chunk graph
+ * cannot reference missing files (`Cannot find module './900.js'`, `__webpack_modules__…`).
+ * Pass **`--no-clean`** to skip (faster restarts if you know the cache is healthy).
+ * **`--clean`** is kept as an explicit alias (same as default).
  *
  * Default `npm run dev` uses Webpack — Turbopack (`--turbopack`) can throw ENOENT on
  * `app-build-manifest.json` / `_buildManifest.js.tmp.*` after refresh on some setups; use
@@ -19,11 +21,11 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const rawArgs = process.argv.slice(2);
-const wantClean = rawArgs.includes("--clean");
-const passThrough = rawArgs.filter((a) => a !== "--clean");
-if (wantClean) {
+const noClean = rawArgs.includes("--no-clean");
+const passThrough = rawArgs.filter((a) => a !== "--clean" && a !== "--no-clean");
+if (!noClean) {
   rmSync(join(root, ".next"), { recursive: true, force: true });
-  console.log("\n[dev] Removed .next (clean start).\n");
+  console.log("\n[dev] Removed .next (clean start — avoids stale webpack chunks).\n");
 }
 
 function portFree(port) {

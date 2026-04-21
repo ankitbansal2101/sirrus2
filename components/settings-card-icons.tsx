@@ -70,6 +70,16 @@ export function IconWorkflow({ className, ...p }: P) {
   );
 }
 
+export function IconManageLeads({ className, ...p }: P) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" {...p}>
+      <rect x="7" y="8" width="26" height="26" rx="3" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M11 14h18M11 20h18M11 26h12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <circle cx="28" cy="26" r="2.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function IconFieldsConfigurator({ className, ...p }: P) {
   return (
     <svg className={className} viewBox="0 0 40 40" fill="none" {...p}>

@@ -10,7 +10,7 @@ export type BlueprintState = {
   position: { x: number; y: number };
 };
 
-export type TransitionFieldKind = "text" | "textarea" | "picklist" | "remark";
+export type TransitionFieldKind = "text" | "textarea" | "picklist" | "remark" | "multi_select";
 
 /** One row on the transition confirmation form (mandatory or optional per row). */
 export type TransitionFormField = {
@@ -114,18 +114,3 @@ export function createDefaultTransition(
   };
 }
 
-export function defaultBlueprintDocument(): BlueprintDocument {
-  const sNone = { id: "st_none", label: "-None-", position: { x: 220, y: 40 } };
-  const sNew = { id: "st_new", label: "New", position: { x: 220, y: 180 } };
-  const sContacted = { id: "st_contacted", label: "Contacted", position: { x: 220, y: 320 } };
-  const t1 = createDefaultTransition(sNone.id, sNew.id, sNone.label, sNew.label);
-  const t2 = createDefaultTransition(sNew.id, sContacted.id, sNew.label, sContacted.label);
-  return {
-    id: "bp_default",
-    name: "Lead pipeline",
-    module: "Leads",
-    stageField: "stage",
-    states: [sNone, sNew, sContacted],
-    transitions: [t1, t2],
-  };
-}

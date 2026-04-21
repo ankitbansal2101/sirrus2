@@ -77,19 +77,19 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
     "w-full rounded-lg border border-field-outer bg-white px-2 py-1.5 text-xs text-ink outline-none focus:border-accent sm:text-sm";
 
   return (
-    <div className="space-y-4 rounded-xl border border-border-soft bg-white/90 p-3">
+    <div className="space-y-3 rounded-md border border-border-soft bg-white/90 p-2.5">
       <div>
-        <h3 className="text-sm font-semibold text-ink">Calculated value</h3>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-          Pick a pattern below. We keep a plain-language preview and a compact expression your runtime can evaluate later.
+        <h3 className="text-xs font-semibold text-ink">Calculated value</h3>
+        <p className="mt-0.5 text-[10px] leading-snug text-muted">
+          Pattern, preview, and stored expression for your runtime.
         </p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {(Object.keys(FORMULA_KIND_LABELS) as FormulaPlan["kind"][]).map((kind) => (
           <label
             key={kind}
-            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-xs has-[:checked]:border-accent/50 has-[:checked]:bg-field-selected-bg sm:text-sm ${
+            className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] has-[:checked]:border-accent/50 has-[:checked]:bg-field-selected-bg ${
               plan.kind === kind ? "border-accent/40 bg-field-selected-bg" : "border-field-outer"
             }`}
           >
@@ -98,7 +98,7 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
               name={`calc-kind-${field.id}`}
               checked={plan.kind === kind}
               onChange={() => setKind(kind)}
-              className="size-4 border-field-outer text-accent focus:ring-accent"
+              className="size-3.5 border-field-outer text-accent focus:ring-accent"
             />
             {FORMULA_KIND_LABELS[kind]}
           </label>
@@ -112,7 +112,7 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
       )}
 
       {plan.kind === "date_offset" && (
-        <div className="space-y-3 rounded-lg border border-field-outer bg-field-surface p-3">
+        <div className="space-y-2 rounded-md border border-field-outer bg-field-surface p-2">
           <div className="space-y-1">
             <span className="text-xs font-medium text-muted">Start from</span>
             <select
@@ -153,7 +153,7 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
       )}
 
       {plan.kind === "days_between" && (
-        <div className="space-y-3 rounded-lg border border-field-outer bg-field-surface p-3">
+        <div className="space-y-2 rounded-md border border-field-outer bg-field-surface p-2">
           <div className="space-y-1">
             <span className="text-xs font-medium text-muted">From</span>
             <select
@@ -194,7 +194,7 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
       )}
 
       {plan.kind === "number_binary" && (
-        <div className="space-y-3 rounded-lg border border-field-outer bg-field-surface p-3">
+        <div className="space-y-2 rounded-md border border-field-outer bg-field-surface p-2">
           <div className="space-y-1">
             <span className="text-xs font-medium text-muted">First value</span>
             <select
@@ -286,14 +286,14 @@ export function CalculatedFieldEditor({ field, allFields, onChange }: Props) {
         </div>
       )}
 
-      <div className="rounded-lg border border-dashed border-accent/30 bg-field-selected-bg/40 px-3 py-2">
-        <p className="text-[11px] font-medium text-ink">Preview</p>
-        <p className="mt-1 text-xs text-muted">{describeFormulaPlan(plan, list)}</p>
+      <div className="rounded-md border border-dashed border-accent/30 bg-field-selected-bg/40 px-2 py-1.5">
+        <p className="text-[10px] font-medium text-ink">Preview</p>
+        <p className="mt-0.5 text-[11px] text-muted">{describeFormulaPlan(plan, list)}</p>
       </div>
 
-      <div className="space-y-1">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted">Stored expression (v1)</span>
-        <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-field-outer bg-zinc-50 px-2 py-2 font-mono text-[10px] text-ink/90 sm:text-[11px]">
+      <div className="space-y-0.5">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Stored expression (v1)</span>
+        <pre className="max-h-20 overflow-auto whitespace-pre-wrap break-all rounded-md border border-field-outer bg-zinc-50 px-1.5 py-1.5 font-mono text-[10px] text-ink/90">
           {serializeFormulaExpression(plan, list) || "— complete the fields above —"}
         </pre>
       </div>

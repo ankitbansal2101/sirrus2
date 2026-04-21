@@ -27,3 +27,6 @@ yarn-error.log*
 
 # env
 .env*.local
+
+# local prototype snapshot (fields / blueprint / leads) — dev-only API writes here
+/data/prototype-state.json

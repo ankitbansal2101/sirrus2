@@ -8,6 +8,7 @@ const TYPE_LABELS: Record<FieldDataType, string> = {
   paragraph: "Paragraph",
   email: "Email",
   phone: "Phone",
+  url: "URL",
   picklist: "Picklist",
   multi_select: "Multi select",
   date: "Date",
@@ -41,15 +42,18 @@ type FieldPaletteProps = {
 
 export function FieldPalette({ onDragTypeSession }: FieldPaletteProps) {
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border-soft bg-surface p-4">
-      <h2 className="mb-1 text-sm font-semibold text-ink">Field types</h2>
-      <p className="mb-4 text-xs leading-snug text-muted">Drag a type onto the canvas to add a field.</p>
-      <ul className="flex flex-col gap-2">
+    <aside className="flex w-40 shrink-0 flex-col border-r border-border-soft bg-surface min-h-0">
+      <div className="shrink-0 border-b border-border-soft/80 px-2.5 py-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted">Field types</h2>
+        <p className="mt-0.5 text-[10px] leading-tight text-muted/90">Drag onto canvas</p>
+      </div>
+      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain p-2">
         {FIELD_DATA_TYPES.map((t) => (
-          <li key={t}>
+          <li key={t} className="min-w-0 shrink-0">
             {/* `draggable` on <button> is unreliable in some browsers; use a div for the drag handle. */}
             <div
               draggable
+              title={`Drag to add: ${TYPE_LABELS[t]}`}
               onDragStart={(e) => {
                 e.dataTransfer.setData(DRAG_MIME, t);
                 e.dataTransfer.setData("text/plain", `${PLAIN_PREFIX}${t}`);
@@ -57,7 +61,7 @@ export function FieldPalette({ onDragTypeSession }: FieldPaletteProps) {
                 onDragTypeSession(t);
               }}
               onDragEnd={() => onDragTypeSession(null)}
-              className="flex w-full cursor-grab select-none items-center rounded-xl border border-border-soft bg-white px-3 py-2.5 text-left text-sm font-medium text-ink shadow-sm active:cursor-grabbing hover:border-accent/40 hover:shadow-md"
+              className="flex w-full cursor-grab select-none items-center rounded-md border border-border-soft bg-white px-2 py-1.5 text-left text-[11px] font-medium leading-snug text-ink shadow-sm active:cursor-grabbing hover:border-accent/45 hover:bg-rail-active/25"
             >
               {TYPE_LABELS[t]}
             </div>

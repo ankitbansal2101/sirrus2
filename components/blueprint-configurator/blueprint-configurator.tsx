@@ -38,10 +38,14 @@ import {
   resolveFieldDefinitions,
   resolveStageField,
 } from "@/lib/blueprint/from-fields-schema";
-import { loadBlueprint, saveBlueprint } from "@/lib/blueprint/storage";
+import {
+  BLUEPRINT_CHANGED_EVENT,
+  loadBlueprintById,
+  saveBlueprint,
+} from "@/lib/blueprint/storage";
+import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import {
   createDefaultTransition,
-  defaultBlueprintDocument,
   newEntityId,
   type BlueprintDocument,
   type BlueprintTransition,
@@ -64,20 +68,23 @@ function applyEdgeChrome(eds: Edge<TransitionEdgeData>[], selectedId: string | n
 
 type PanelTab = "info" | "transition";
 
-function BlueprintFlow() {
+function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   const { setSaveBanner, registerSaveHandler } = useBlueprintWorkspace();
   const pathname = usePathname();
-  const seed = useMemo(() => defaultBlueprintDocument(), []);
+  const initialDoc = useMemo(
+    () => loadBlueprintById(blueprintId) ?? defaultBlueprintDocument(),
+    [blueprintId],
+  );
   const [docMeta, setDocMeta] = useState<Pick<BlueprintDocument, "id" | "name" | "module" | "stageField">>(() => ({
-    id: seed.id,
-    name: seed.name,
-    module: seed.module,
-    stageField: seed.stageField,
+    id: initialDoc.id,
+    name: initialDoc.name,
+    module: initialDoc.module,
+    stageField: initialDoc.stageField,
   }));
   const initialFlow = useMemo(() => {
-    const { nodes, edges } = blueprintToFlow(seed);
+    const { nodes, edges } = blueprintToFlow(initialDoc);
     return { nodes, edges: applyEdgeChrome(edges, null) };
-  }, [seed]);
+  }, [initialDoc]);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<StageNodeData>>(initialFlow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<TransitionEdgeData>>(initialFlow.edges);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -119,8 +126,8 @@ function BlueprintFlow() {
     };
   }, []);
 
-  useEffect(() => {
-    const loaded = loadBlueprint();
+  const reloadBlueprintFromStorage = useCallback(() => {
+    const loaded = loadBlueprintById(blueprintId);
     if (!loaded) return;
     const { nodes: n, edges: e } = blueprintToFlow(loaded);
     setDocMeta({
@@ -131,7 +138,17 @@ function BlueprintFlow() {
     });
     setNodes(n);
     setEdges(applyEdgeChrome(e, null));
-  }, [setEdges, setNodes]);
+  }, [blueprintId, setEdges, setNodes]);
+
+  useEffect(() => {
+    reloadBlueprintFromStorage();
+  }, [reloadBlueprintFromStorage]);
+
+  useEffect(() => {
+    const onBlueprint = () => reloadBlueprintFromStorage();
+    window.addEventListener(BLUEPRINT_CHANGED_EVENT, onBlueprint);
+    return () => window.removeEventListener(BLUEPRINT_CHANGED_EVENT, onBlueprint);
+  }, [reloadBlueprintFromStorage]);
 
   const labelByNodeId = useCallback(
     (id: string) => nodes.find((n) => n.id === id)?.data?.label ?? "",
@@ -277,8 +294,6 @@ function BlueprintFlow() {
     setSelectedEdgeId(null);
   }, [blurBlockingFocus]);
 
-  const previewLimit = 10;
-
   const tabBtn = (id: PanelTab, label: string) => (
     <button
       key={id}
@@ -367,35 +382,11 @@ function BlueprintFlow() {
                     )}
                   </select>
                 </p>
-              </div>
-
-              <div className="shrink-0">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Picklist values</p>
-                <div className="mt-1 flex max-h-16 flex-wrap gap-1 overflow-y-auto">
-                  {stagePaletteLabels.length === 0 ? (
-                    <span className="text-[10px] text-muted">None</span>
-                  ) : (
-                    <>
-                      {stagePaletteLabels.slice(0, previewLimit).map((label, idx) => (
-                        <span
-                          key={`${label}-${idx}`}
-                          title={label}
-                          className="max-w-[5.5rem] truncate rounded border border-border-soft bg-white px-1 py-0.5 text-[9px] font-medium text-ink"
-                        >
-                          {label}
-                        </span>
-                      ))}
-                      {stagePaletteLabels.length > previewLimit ? (
-                        <span className="self-center text-[9px] text-muted">+{stagePaletteLabels.length - previewLimit}</span>
-                      ) : null}
-                    </>
-                  )}
-                </div>
                 <Link
                   href="/developer/lead-settings/fields-configurator"
                   className="mt-2 inline-block text-[10px] font-semibold text-accent underline-offset-2 hover:underline"
                 >
-                  Edit in Fields configurator →
+                  Edit stage options in Fields configurator →
                 </Link>
               </div>
 
@@ -446,11 +437,11 @@ function BlueprintFlow() {
   );
 }
 
-export default function BlueprintConfigurator() {
+export default function BlueprintConfigurator({ blueprintId }: { blueprintId: string }) {
   return (
     <ReactFlowProvider>
       <div className="flex min-h-0 flex-1 flex-col">
-        <BlueprintFlow />
+        <BlueprintFlow blueprintId={blueprintId} />
       </div>
     </ReactFlowProvider>
   );

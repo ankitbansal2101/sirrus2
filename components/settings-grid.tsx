@@ -6,6 +6,7 @@ import {
   IconConnectors,
   IconFieldsConfigurator,
   IconLeadForm,
+  IconManageLeads,
   IconReports,
   IconRules,
   IconWhatsapp,
@@ -20,6 +21,12 @@ type Card = {
 };
 
 const cards: Card[] = [
+  {
+    href: "/developer/manage-leads",
+    title: "Manage leads",
+    description: "List leads from your field schema; change stage using blueprint transitions and transition forms",
+    Icon: IconManageLeads,
+  },
   {
     href: "/developer/lead-settings/customise-lead-form",
     title: "Customise Lead Form",

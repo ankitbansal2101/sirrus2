@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import type { AfterFieldUpdate, BlueprintTransition, LeadFieldOption, TransitionFieldKind } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
+import { TASK_TYPE_PRESETS, coerceTaskPresetType } from "@/lib/blueprint/task-presets";
+import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form-shape";
 import { IconPlus, IconTrash } from "@/components/icons";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 import { optionsSorted } from "@/lib/fields-config/types";
 
 type PhaseTab = "during" | "after";
-
-const TASK_TYPE_PRESETS = ["Follow up", "Site visit"] as const;
 
 type Props = {
   transition: BlueprintTransition;
@@ -27,10 +27,6 @@ type Props = {
 
 function labelForFieldId(fieldOptions: LeadFieldOption[], fieldId: string, storedLabel: string): string {
   return fieldOptions.find((f) => f.id === fieldId)?.label ?? storedLabel;
-}
-
-function coerceTaskPresetType(t: string): (typeof TASK_TYPE_PRESETS)[number] {
-  return t.trim() === "Site visit" ? "Site visit" : "Follow up";
 }
 
 function fieldDefByApiKey(defs: FieldDefinition[], apiKey: string): FieldDefinition | undefined {
@@ -452,6 +448,8 @@ export function TransitionInspector({
                   className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm transition hover:opacity-95"
                   onClick={() => {
                     const seed = defaultNewField();
+                    const defn = fieldDefByApiKey(fieldDefinitions, seed.fieldId);
+                    const shaped = shapeTransitionFormFieldStorage(defn);
                     onChange({
                       ...transition,
                       form: {
@@ -461,11 +459,10 @@ export function TransitionInspector({
                           {
                             id: newEntityId("df"),
                             fieldId: seed.fieldId,
-                            label: seed.label,
-                            kind: (seed.fieldId === "lost_reason" ? "picklist" : "text") as TransitionFieldKind,
+                            label: defn?.label ?? seed.label,
+                            kind: shaped.kind as TransitionFieldKind,
                             mandatory: false,
-                            picklistOptions:
-                              seed.fieldId === "lost_reason" ? ["Price", "Fit", "Timing", "Other"] : [],
+                            picklistOptions: shaped.picklistOptions,
                           },
                         ],
                       },
@@ -510,6 +507,8 @@ export function TransitionInspector({
                       value={row.fieldId}
                       onChange={(e) => {
                         const fieldId = e.target.value;
+                        const defn = fieldDefByApiKey(fieldDefinitions, fieldId);
+                        const shaped = shapeTransitionFormFieldStorage(defn);
                         onChange({
                           ...transition,
                           form: {
@@ -520,6 +519,8 @@ export function TransitionInspector({
                                     ...x,
                                     fieldId,
                                     label: labelForFieldId(fieldOptions, fieldId, x.label),
+                                    kind: shaped.kind as TransitionFieldKind,
+                                    picklistOptions: shaped.picklistOptions,
                                   }
                                 : x,
                             ),
@@ -558,36 +559,56 @@ export function TransitionInspector({
                       <option value="mandatory">Mandatory</option>
                       <option value="optional">Non-mandatory</option>
                     </select>
-                    {row.kind === "picklist" && row.picklistOptions.length > 0 ? (
-                      <div className="mt-2">
-                        <label className="text-[10px] text-muted">Picklist options</label>
-                        <input
-                          type="text"
-                          value={row.picklistOptions.join(", ")}
-                          onChange={(e) =>
-                            onChange({
-                              ...transition,
-                              form: {
-                                ...transition.form,
-                                fields: transition.form.fields.map((x) =>
-                                  x.id === row.id
-                                    ? {
-                                        ...x,
-                                        picklistOptions: e.target.value
-                                          .split(",")
-                                          .map((s) => s.trim())
-                                          .filter(Boolean),
-                                      }
-                                    : x,
-                                ),
-                              },
-                            })
-                          }
-                          className="mt-0.5 w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs"
-                          placeholder="Comma-separated"
-                        />
-                      </div>
-                    ) : null}
+                    {(() => {
+                      const defn = fieldDefByApiKey(fieldDefinitions, row.fieldId);
+                      const schemaDrivenPicklist =
+                        defn && (defn.dataType === "picklist" || defn.dataType === "radio");
+                      const schemaDrivenMulti = defn && defn.dataType === "multi_select";
+                      if (schemaDrivenPicklist || schemaDrivenMulti) {
+                        return (
+                          <p className="mt-2 text-[10px] leading-snug text-muted">
+                            Choices follow your{" "}
+                            <Link href="/developer/lead-settings/fields-configurator" className="font-semibold text-accent underline-offset-2 hover:underline">
+                              Fields
+                            </Link>{" "}
+                            configurator ({schemaDrivenMulti ? "multi-select" : "picklist"}).
+                          </p>
+                        );
+                      }
+                      if (row.kind === "picklist" && row.picklistOptions.length > 0) {
+                        return (
+                          <div className="mt-2">
+                            <label className="text-[10px] text-muted">Picklist options</label>
+                            <input
+                              type="text"
+                              value={row.picklistOptions.join(", ")}
+                              onChange={(e) =>
+                                onChange({
+                                  ...transition,
+                                  form: {
+                                    ...transition.form,
+                                    fields: transition.form.fields.map((x) =>
+                                      x.id === row.id
+                                        ? {
+                                            ...x,
+                                            picklistOptions: e.target.value
+                                              .split(",")
+                                              .map((s) => s.trim())
+                                              .filter(Boolean),
+                                          }
+                                        : x,
+                                    ),
+                                  },
+                                })
+                              }
+                              className="mt-0.5 w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs"
+                              placeholder="Comma-separated"
+                            />
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </li>
                 ))}
               </ul>
