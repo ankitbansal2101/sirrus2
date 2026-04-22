@@ -406,6 +406,14 @@ export function TransitionInspector({
           />
           Enabled
         </label>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-[11px] font-semibold text-red-800 transition hover:bg-red-100"
+        >
+          <IconTrash className="size-3.5 shrink-0" aria-hidden />
+          Remove this connection only
+        </button>
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
           Pickers from{" "}
           <Link href="/developer/lead-settings/fields-configurator" className="font-semibold text-accent underline-offset-2 hover:underline">
@@ -802,13 +810,6 @@ export function TransitionInspector({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 border-t border-border-soft bg-white/80 px-2 py-1.5">
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-800 transition hover:bg-red-100"
-        >
-          Delete
-        </button>
         <button
           type="button"
           onClick={onClose}

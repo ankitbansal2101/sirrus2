@@ -276,9 +276,18 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     }
   }, [edges, selectedEdgeId]);
 
-  const onNodeClick = useCallback(() => {
-    blurBlockingFocus();
-  }, [blurBlockingFocus]);
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, _node: FlowNode<StageNodeData>) => {
+      blurBlockingFocus();
+      /** Avoid edge + node both marked selected — Delete would remove both. */
+      setSelectedEdgeId(null);
+    },
+    [blurBlockingFocus],
+  );
+
+  const onEdgesDelete = useCallback(() => {
+    setSelectedEdgeId(null);
+  }, []);
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge<TransitionEdgeData>) => {
@@ -325,10 +334,12 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={onNodeClick}
+            onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
             deleteKeyCode={["Backspace", "Delete"]}
+            defaultEdgeOptions={{ interactionWidth: 28 }}
             onEdgeClick={onEdgeClick}
             onPaneClick={onPaneClick}
             className="bg-[#eef0f3]"
@@ -418,7 +429,9 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
               ) : (
                 <div className="space-y-2 p-4 text-center">
                   <p className="text-xs leading-relaxed text-muted">
-                    Select a <strong className="text-ink">transition</strong> (connector) on the canvas to edit During and After behavior.
+                    Click a <strong className="text-ink">line between stages</strong> to select that connection. Open{" "}
+                    <strong className="text-ink">Transition</strong> (above) to edit it or remove only that arrow — stages
+                    stay on the canvas. With a line selected, <kbd className="rounded border border-border-soft bg-zinc-100 px-1 py-px font-mono text-[10px]">Del</kbd> removes just the connection.
                   </p>
                   <button
                     type="button"
