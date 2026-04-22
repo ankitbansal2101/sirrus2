@@ -1,5 +1,9 @@
 import { migrateBlueprintDocument } from "@/lib/blueprint/migrate";
-import { createStandardBlueprintDocument, defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
+import {
+  createBlankBlueprintDocument,
+  createStandardBlueprintDocument,
+  defaultBlueprintDocument,
+} from "@/lib/blueprint/standard-blueprint";
 import type { BlueprintDocument } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
 import { loadFieldsSchema } from "@/lib/fields-config/schema-storage";
@@ -187,7 +191,7 @@ export function addBlueprint(copyFrom?: BlueprintDocument): BlueprintDocument {
         name: `${copyFrom.name} (copy)`,
       }
     : (() => {
-        const fresh = JSON.parse(JSON.stringify(createStandardBlueprintDocument())) as BlueprintDocument;
+        const fresh = JSON.parse(JSON.stringify(createBlankBlueprintDocument())) as BlueprintDocument;
         fresh.id = newEntityId("bp");
         fresh.name = "New blueprint";
         return fresh;

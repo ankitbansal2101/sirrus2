@@ -244,3 +244,15 @@ export function createStandardBlueprintDocument(): BlueprintDocument {
 export function defaultBlueprintDocument(): BlueprintDocument {
   return createStandardBlueprintDocument();
 }
+
+/** Empty canvas for a user-created blueprint (not a duplicate). `id` is replaced in storage. */
+export function createBlankBlueprintDocument(): BlueprintDocument {
+  return {
+    id: "bp_blank",
+    name: "New blueprint",
+    module: "Leads",
+    stageField: "stage",
+    states: [],
+    transitions: [],
+  };
+}
