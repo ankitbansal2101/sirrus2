@@ -46,9 +46,10 @@ const TEXT_OPS: OperatorMeta[] = [
   { id: "not_empty", label: "is not empty", needsValue: false, needsValue2: false },
 ];
 
+/** Picklist / radio: multi-select value (comma-separated option ids), per product spec. */
 const PICKLIST_OPS: OperatorMeta[] = [
-  { id: "eq", label: "is", needsValue: true, needsValue2: false },
-  { id: "neq", label: "is not", needsValue: true, needsValue2: false },
+  { id: "eq", label: "is (multi-select)", needsValue: true, needsValue2: false },
+  { id: "neq", label: "is not (multi-select)", needsValue: true, needsValue2: false },
   { id: "empty", label: "is empty", needsValue: false, needsValue2: false },
   { id: "not_empty", label: "is not empty", needsValue: false, needsValue2: false },
 ];
@@ -62,14 +63,13 @@ const MULTI_OPS: OperatorMeta[] = [
 ];
 
 const NUMBER_OPS: OperatorMeta[] = [
-  { id: "num_eq", label: "=", needsValue: true, needsValue2: false },
-  { id: "num_neq", label: "≠", needsValue: true, needsValue2: false },
-  { id: "lt", label: "<", needsValue: true, needsValue2: false },
-  { id: "lte", label: "≤", needsValue: true, needsValue2: false },
-  { id: "gt", label: ">", needsValue: true, needsValue2: false },
-  { id: "gte", label: "≥", needsValue: true, needsValue2: false },
+  { id: "num_eq", label: "equal to (=)", needsValue: true, needsValue2: false },
+  { id: "num_neq", label: "not equal to (≠)", needsValue: true, needsValue2: false },
+  { id: "gt", label: "greater than (>)", needsValue: true, needsValue2: false },
+  { id: "gte", label: "greater than or equal to (≥)", needsValue: true, needsValue2: false },
+  { id: "lt", label: "less than (<)", needsValue: true, needsValue2: false },
+  { id: "lte", label: "less than or equal to (≤)", needsValue: true, needsValue2: false },
   { id: "between", label: "between", needsValue: true, needsValue2: true },
-  { id: "not_between", label: "not between", needsValue: true, needsValue2: true },
   { id: "empty", label: "is empty", needsValue: false, needsValue2: false },
   { id: "not_empty", label: "is not empty", needsValue: false, needsValue2: false },
 ];
@@ -78,19 +78,42 @@ const DATE_OPS: OperatorMeta[] = [
   { id: "on", label: "on", needsValue: true, needsValue2: false },
   { id: "before", label: "before", needsValue: true, needsValue2: false },
   { id: "after", label: "after", needsValue: true, needsValue2: false },
+  { id: "on_or_before", label: "on or before", needsValue: true, needsValue2: false },
+  { id: "on_or_after", label: "on or after", needsValue: true, needsValue2: false },
   { id: "between", label: "between", needsValue: true, needsValue2: true },
-  { id: "not_between", label: "not between", needsValue: true, needsValue2: true },
   { id: "today", label: "today", needsValue: false, needsValue2: false },
   { id: "yesterday", label: "yesterday", needsValue: false, needsValue2: false },
+  { id: "last_7_days", label: "last 7 days", needsValue: false, needsValue2: false },
+  { id: "last_30_days", label: "last 30 days", needsValue: false, needsValue2: false },
+  { id: "next_7_days", label: "next 7 days", needsValue: false, needsValue2: false },
+  { id: "next_30_days", label: "next 30 days", needsValue: false, needsValue2: false },
+  { id: "this_year", label: "this year", needsValue: false, needsValue2: false },
+  { id: "last_year", label: "last year", needsValue: false, needsValue2: false },
+  { id: "this_month", label: "this month", needsValue: false, needsValue2: false },
+  { id: "last_month", label: "last month", needsValue: false, needsValue2: false },
+  { id: "last_n_days", label: "Last (n) days", needsValue: true, needsValue2: false },
+  { id: "last_n_weeks", label: "Last (n) weeks", needsValue: true, needsValue2: false },
+  { id: "last_n_months", label: "Last (n) months", needsValue: true, needsValue2: false },
+  { id: "next_n_days", label: "Next (n) days", needsValue: true, needsValue2: false },
+  { id: "next_n_weeks", label: "Next (n) weeks", needsValue: true, needsValue2: false },
+  { id: "next_n_months", label: "Next (n) months", needsValue: true, needsValue2: false },
+  { id: "empty", label: "is empty", needsValue: false, needsValue2: false },
+  { id: "not_empty", label: "is not empty", needsValue: false, needsValue2: false },
+];
+
+/** Legacy / persisted operator ids still evaluated but not offered in the UI. */
+const LEGACY_DATE_META: OperatorMeta[] = [
+  { id: "not_between", label: "not between", needsValue: true, needsValue2: true },
   { id: "tomorrow", label: "tomorrow", needsValue: false, needsValue2: false },
   { id: "this_week", label: "this week", needsValue: false, needsValue2: false },
-  { id: "this_month", label: "this month", needsValue: false, needsValue2: false },
   { id: "next_week", label: "next week", needsValue: false, needsValue2: false },
   { id: "next_month", label: "next month", needsValue: false, needsValue2: false },
   { id: "prev_week", label: "previous week", needsValue: false, needsValue2: false },
   { id: "prev_month", label: "previous month", needsValue: false, needsValue2: false },
-  { id: "empty", label: "is empty", needsValue: false, needsValue2: false },
-  { id: "not_empty", label: "is not empty", needsValue: false, needsValue2: false },
+];
+
+const LEGACY_NUMBER_META: OperatorMeta[] = [
+  { id: "not_between", label: "not between", needsValue: true, needsValue2: true },
 ];
 
 export function operatorsForKind(kind: LeadFilterFieldKind): OperatorMeta[] {
@@ -111,7 +134,11 @@ export function operatorsForKind(kind: LeadFilterFieldKind): OperatorMeta[] {
 }
 
 export function operatorMeta(kind: LeadFilterFieldKind, operatorId: string): OperatorMeta | undefined {
-  return operatorsForKind(kind).find((o) => o.id === operatorId);
+  const primary = operatorsForKind(kind).find((o) => o.id === operatorId);
+  if (primary) return primary;
+  if (kind === "date") return LEGACY_DATE_META.find((o) => o.id === operatorId);
+  if (kind === "number") return LEGACY_NUMBER_META.find((o) => o.id === operatorId);
+  return undefined;
 }
 
 export function defaultOperatorForKind(kind: LeadFilterFieldKind): string {
@@ -122,4 +149,15 @@ export function defaultOperatorForKind(kind: LeadFilterFieldKind): string {
 /** Fields that can appear in the filter builder (schema flag + supported kind). */
 export function filterableFields(fields: FieldDefinition[]): FieldDefinition[] {
   return fields.filter((f) => f.includeInFilters !== false);
+}
+
+export function isRelativeNDateOperator(id: string): boolean {
+  return (
+    id === "last_n_days" ||
+    id === "last_n_weeks" ||
+    id === "last_n_months" ||
+    id === "next_n_days" ||
+    id === "next_n_weeks" ||
+    id === "next_n_months"
+  );
 }

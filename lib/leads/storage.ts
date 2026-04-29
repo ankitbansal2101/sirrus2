@@ -5,7 +5,7 @@ import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import { resolveStageField } from "@/lib/blueprint/from-fields-schema";
 import { createDefaultLeadFields } from "@/lib/fields-config/types";
 import { loadFieldsSchema } from "@/lib/fields-config/schema-storage";
-import type { LeadRecord } from "@/lib/leads/types";
+import type { LeadRecord, LeadRelatedDemoRow } from "@/lib/leads/types";
 import { stateToStageOptionId } from "@/lib/leads/stage-bridge";
 
 export const LEADS_STORAGE_KEY = "sirrus2_leads_v1";
@@ -21,6 +21,51 @@ function newLeadId(): string {
   const c = globalThis.crypto;
   if (c && "randomUUID" in c && typeof c.randomUUID === "function") return c.randomUUID();
   return `lead_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Deterministic sample related rows for connected-module filters in the prototype. */
+export function seedRelatedDemoForLead(index: number): NonNullable<LeadRecord["relatedDemo"]> {
+  const baseTime = Date.now() - index * 3600000;
+  const iso = (offsetH: number) => new Date(baseTime + offsetH * 3600000).toISOString();
+
+  const calls: LeadRelatedDemoRow[] =
+    index % 3 === 0
+      ? []
+      : [
+          {
+            call_start_time: iso(-2),
+            call_end_time: iso(-1),
+            call_duration_seconds: String(120 + index * 10),
+            call_owner: index % 2 === 0 ? "co_a" : "co_b",
+            call_type: "ct_in",
+            call_status: "cs_comp",
+          },
+        ];
+
+  const tasks: LeadRelatedDemoRow[] =
+    index % 4 === 1
+      ? []
+      : [
+          {
+            task_type: "tt_fu",
+            due_date: iso(24),
+            task_status: index % 2 === 0 ? "ts_open" : "ts_done",
+            task_owner: "to_a",
+          },
+        ];
+
+  const channel_partner: LeadRelatedDemoRow[] =
+    index % 5 === 2
+      ? []
+      : [
+          {
+            cp_name: `Partner ${index}`,
+            cp_tier: "tier_gold",
+            cp_region: "reg_n",
+          },
+        ];
+
+  return { calls, tasks, channel_partner };
 }
 
 function nextDisplayId(seq: number) {
@@ -82,6 +127,7 @@ function seedLeads(): LeadRecord[] {
       values,
       createdAt: now,
       updatedAt: now,
+      relatedDemo: seedRelatedDemoForLead(i),
     };
   });
   return rows;
@@ -106,14 +152,30 @@ export function loadLeads(): LeadRecord[] {
     }
     return parsed
       .filter((x) => x && typeof x === "object")
-      .map((x) => {
+      .map((x, idx) => {
         const o = x as Record<string, unknown>;
+        const relatedRaw = o.relatedDemo;
+        const baseRel = seedRelatedDemoForLead(idx);
+        let relatedDemo: LeadRecord["relatedDemo"];
+        if (relatedRaw && typeof relatedRaw === "object") {
+          const r = relatedRaw as Record<string, unknown>;
+          relatedDemo = {
+            calls: Array.isArray(r.calls) ? (r.calls as LeadRelatedDemoRow[]) : baseRel.calls,
+            tasks: Array.isArray(r.tasks) ? (r.tasks as LeadRelatedDemoRow[]) : baseRel.tasks,
+            channel_partner: Array.isArray(r.channel_partner)
+              ? (r.channel_partner as LeadRelatedDemoRow[])
+              : baseRel.channel_partner,
+          };
+        } else {
+          relatedDemo = baseRel;
+        }
         return {
           id: String(o.id ?? newLeadId()),
           displayId: String(o.displayId ?? ""),
           values: (o.values && typeof o.values === "object" ? (o.values as Record<string, string>) : {}) ?? {},
           createdAt: String(o.createdAt ?? new Date().toISOString()),
           updatedAt: String(o.updatedAt ?? new Date().toISOString()),
+          relatedDemo,
         };
       });
   } catch {

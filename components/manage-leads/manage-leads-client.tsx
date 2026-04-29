@@ -18,9 +18,13 @@ import {
   stateToStageOptionId,
   targetState,
 } from "@/lib/leads/stage-bridge";
-import { isLeadFilterConditionReady, leadMatchesFilterConfig } from "@/lib/leads/evaluate-lead-filters";
+import {
+  activeFilterClauseCount,
+  filterConfigHasActiveClauses,
+  leadMatchesFilterConfig,
+} from "@/lib/leads/evaluate-lead-filters";
 import type { LeadFilterConfig } from "@/lib/leads/lead-filter-types";
-import { LEADS_CHANGED_EVENT, loadLeads, saveLeads, upsertLead } from "@/lib/leads/storage";
+import { LEADS_CHANGED_EVENT, loadLeads, saveLeads, seedRelatedDemoForLead, upsertLead } from "@/lib/leads/storage";
 import type { LeadRecord } from "@/lib/leads/types";
 import { LeadFiltersDrawer } from "@/components/manage-leads/lead-filters-drawer";
 import { SavedLeadFiltersBar } from "@/components/manage-leads/saved-lead-filters-bar";
@@ -231,6 +235,8 @@ export function ManageLeadsClient() {
   const [pageSize, setPageSize] = useState(10);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [appliedLeadFilters, setAppliedLeadFilters] = useState<LeadFilterConfig | null>(null);
+  /** When the user applied a filter from the saved bar, we keep its id so the drawer can offer “Update saved filter”. */
+  const [appliedSavedFilterSourceId, setAppliedSavedFilterSourceId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setFields(loadFieldsSchema() ?? createDefaultLeadFields());
@@ -286,10 +292,7 @@ export function ManageLeadsClient() {
   }, [stageTab, searchQuery, warmthFilter, pageSize, appliedLeadFilters]);
 
   const activeAdvancedFilter =
-    appliedLeadFilters &&
-    appliedLeadFilters.conditions.some((c) => isLeadFilterConditionReady(c, fields))
-      ? appliedLeadFilters
-      : null;
+    appliedLeadFilters && filterConfigHasActiveClauses(appliedLeadFilters, fields) ? appliedLeadFilters : null;
 
   const stageField = useMemo(
     () => (blueprint ? stageFieldForBlueprint(fields, blueprint) : undefined),
@@ -471,6 +474,7 @@ export function ManageLeadsClient() {
       values,
       createdAt: now,
       updatedAt: now,
+      relatedDemo: seedRelatedDemoForLead(leads.length),
     };
     const list = upsertLead(leads, newLead);
     setLeads(list);
@@ -621,15 +625,25 @@ export function ManageLeadsClient() {
                 <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
               </svg>
               Filters
-              {activeAdvancedFilter ? (
+              {activeAdvancedFilter && appliedLeadFilters ? (
                 <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold leading-none text-white">
-                  {activeAdvancedFilter.conditions.filter((c) => isLeadFilterConditionReady(c, fields)).length}
+                  {activeFilterClauseCount(appliedLeadFilters, fields)}
                 </span>
               ) : null}
             </button>
           </div>
 
-          <SavedLeadFiltersBar applied={appliedLeadFilters} onApplySaved={(c) => setAppliedLeadFilters(c)} />
+          <SavedLeadFiltersBar
+            applied={appliedLeadFilters}
+            onApplySaved={(c, sourceId) => {
+              setAppliedLeadFilters(c);
+              setAppliedSavedFilterSourceId(sourceId ?? null);
+            }}
+            onClearApplied={() => {
+              setAppliedLeadFilters(null);
+              setAppliedSavedFilterSourceId(null);
+            }}
+          />
 
           <div className="relative isolate overflow-x-auto">
             <table className="border-separate text-left" style={{ borderSpacing: 0, minWidth: "100%", width: "max-content" }}>
@@ -1290,8 +1304,15 @@ export function ManageLeadsClient() {
         onClose={() => setFilterDrawerOpen(false)}
         fields={fields}
         applied={appliedLeadFilters}
-        onApply={(c) => setAppliedLeadFilters(c)}
-        onClearApplied={() => setAppliedLeadFilters(null)}
+        appliedSavedFilterSourceId={appliedSavedFilterSourceId}
+        onApply={(c) => {
+          setAppliedLeadFilters(c);
+          setAppliedSavedFilterSourceId(null);
+        }}
+        onClearApplied={() => {
+          setAppliedLeadFilters(null);
+          setAppliedSavedFilterSourceId(null);
+        }}
       />
     </div>
   );

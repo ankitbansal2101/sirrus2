@@ -1,13 +1,9 @@
 import { syncConditionShape } from "@/lib/leads/evaluate-lead-filters";
-import {
-  defaultOperatorForKind,
-  filterFieldKind,
-  filterableFields,
-} from "@/lib/leads/lead-filter-operators";
+import { defaultOperatorForKind, filterFieldKind, filterableFields } from "@/lib/leads/lead-filter-operators";
 import type { LeadFilterCondition, LeadFilterConfig } from "@/lib/leads/lead-filter-types";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 
-/** UI state for one schema field in the Zoho-style filter panel. */
+/** UI state for one schema field in the lead filter panel (all fields shown upfront). */
 export type PerFieldFilterRow = {
   enabled: boolean;
   operator: string;
@@ -68,11 +64,8 @@ export function perFieldStateFromConfig(
   return m;
 }
 
-/** Build `LeadFilterConfig` from the per-field map (only checked fields). */
-export function configFromPerFieldState(
-  states: PerFieldFilterStateMap,
-  filterableFieldList: FieldDefinition[],
-): LeadFilterConfig {
+/** Build `LeadFilterConfig` lead conditions from the per-field map (only checked fields). */
+export function configFromPerFieldState(states: PerFieldFilterStateMap, filterableFieldList: FieldDefinition[]): LeadFilterConfig {
   const conditions: LeadFilterCondition[] = [];
   for (const f of filterableFieldList) {
     const s = states[f.apiKey];
@@ -87,7 +80,7 @@ export function configFromPerFieldState(
     const synced = syncConditionShape(base, f);
     conditions.push(synced);
   }
-  return { conditions };
+  return { logic: "AND", conditions };
 }
 
 export function filterableFieldsSorted(fields: FieldDefinition[]): FieldDefinition[] {

@@ -1,3 +1,4 @@
+import { normalizeLeadFilterConfig } from "@/lib/leads/lead-filter-config-normalize";
 import type { LeadFilterConfig } from "@/lib/leads/lead-filter-types";
 import { schedulePrototypeDiskPush } from "@/lib/prototype-persist/push";
 
@@ -24,27 +25,7 @@ function isSavedRow(x: unknown): x is SavedLeadFilter {
 }
 
 function normalizeConfig(raw: unknown): LeadFilterConfig {
-  if (!raw || typeof raw !== "object") return { conditions: [] };
-  const o = raw as Record<string, unknown>;
-  const conds = Array.isArray(o.conditions) ? o.conditions : [];
-  const c = globalThis.crypto;
-  const nid = () =>
-    c && "randomUUID" in c && typeof c.randomUUID === "function"
-      ? c.randomUUID()
-      : `fc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
-  const conditions = conds.map((row) => {
-    if (!row || typeof row !== "object") return { id: nid(), fieldApiKey: "", operator: "", value: "", value2: "" };
-    const r = row as Record<string, unknown>;
-    const fieldRaw = typeof r.field === "string" ? r.field : typeof r.fieldApiKey === "string" ? r.fieldApiKey : "";
-    return {
-      id: typeof r.id === "string" ? r.id : nid(),
-      fieldApiKey: fieldRaw,
-      operator: typeof r.operator === "string" ? r.operator : "",
-      value: typeof r.value === "string" ? r.value : "",
-      value2: typeof r.value2 === "string" ? r.value2 : "",
-    };
-  });
-  return { conditions };
+  return normalizeLeadFilterConfig(raw);
 }
 
 export function loadSavedLeadFilters(): SavedLeadFilter[] {
