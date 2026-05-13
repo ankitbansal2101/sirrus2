@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { AfterFieldUpdate, BlueprintTransition, LeadFieldOption, TransitionFieldKind } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
 import { TASK_TYPE_PRESETS, coerceTaskPresetType } from "@/lib/blueprint/task-presets";
+import { AfterAutomationPanel } from "@/components/blueprint-configurator/after-transition-config";
 import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form-shape";
 import { IconPlus, IconTrash } from "@/components/icons";
 import type { FieldDefinition } from "@/lib/fields-config/types";
@@ -231,7 +232,7 @@ function AfterAutoValueRow({ u, fieldOptions, fieldDefinitions, onPatch, onRemov
                 checked={u.valueKind === "literal"}
                 onChange={() => onPatch({ valueKind: "literal", literalValue: u.literalValue })}
               />
-              Pick date
+              Static value
             </label>
             <label className="flex cursor-pointer items-center gap-1.5">
               <input
@@ -241,7 +242,7 @@ function AfterAutoValueRow({ u, fieldOptions, fieldDefinitions, onPatch, onRemov
                 checked={u.valueKind === "execution_date"}
                 onChange={() => onPatch({ valueKind: "execution_date", literalValue: "" })}
               />
-              When transition runs
+              System — execution day
             </label>
           </div>
           {u.valueKind === "literal" ? (
@@ -270,7 +271,7 @@ function AfterAutoValueRow({ u, fieldOptions, fieldDefinitions, onPatch, onRemov
                 checked={u.valueKind === "literal"}
                 onChange={() => onPatch({ valueKind: "literal", literalValue: u.literalValue })}
               />
-              Pick date and time
+              Static value
             </label>
             <label className="flex cursor-pointer items-center gap-1.5">
               <input
@@ -280,7 +281,7 @@ function AfterAutoValueRow({ u, fieldOptions, fieldDefinitions, onPatch, onRemov
                 checked={u.valueKind === "execution_date_time"}
                 onChange={() => onPatch({ valueKind: "execution_date_time", literalValue: "" })}
               />
-              When transition runs
+              System — execution day and time
             </label>
           </div>
           {u.valueKind === "literal" ? (
@@ -736,11 +737,12 @@ export function TransitionInspector({
         {phase === "after" ? (
           <div className="space-y-3">
             <p className="text-[10px] leading-snug text-muted">
-              Uses field types from{" "}
+              <strong className="text-ink">Field updates:</strong> static value or system execution date/time on date fields. Uses types from{" "}
               <Link href="/developer/lead-settings/fields-configurator" className="font-semibold text-accent underline-offset-2 hover:underline">
                 Fields
               </Link>
-              . Add as many updates as you need.
+              . <strong className="text-ink">Auto tasks</strong> and <strong className="text-ink">create record</strong> run after the transition
+              completes.
             </p>
             <div>
               <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -758,6 +760,7 @@ export function TransitionInspector({
                     onChange({
                       ...transition,
                       after: {
+                        ...transition.after,
                         fieldUpdates: [
                           ...transition.after.fieldUpdates,
                           {
@@ -786,6 +789,7 @@ export function TransitionInspector({
                       onChange({
                         ...transition,
                         after: {
+                          ...transition.after,
                           fieldUpdates: transition.after.fieldUpdates.map((x) => {
                             if (x.id !== u.id) return x;
                             const merged = { ...x, ...partial };
@@ -798,13 +802,22 @@ export function TransitionInspector({
                     onRemove={() =>
                       onChange({
                         ...transition,
-                        after: { fieldUpdates: transition.after.fieldUpdates.filter((x) => x.id !== u.id) },
+                        after: {
+                          ...transition.after,
+                          fieldUpdates: transition.after.fieldUpdates.filter((x) => x.id !== u.id),
+                        },
                       })
                     }
                   />
                 ))}
               </ul>
             </div>
+
+            <AfterAutomationPanel
+              after={transition.after}
+              leadFieldDefinitions={fieldDefinitions}
+              onChange={(nextAfter) => onChange({ ...transition, after: nextAfter })}
+            />
           </div>
         ) : null}
       </div>

@@ -41,6 +41,59 @@ export type AfterFieldUpdate = {
   literalValue: string;
 };
 
+/** Anchor for auto-created task due date (no rep input). */
+export type AfterTransitionTaskDueAnchor =
+  | "execution"
+  | "created"
+  | "updated"
+  | { kind: "field"; fieldApiKey: string };
+
+/** How auto-task due date is computed. */
+export type AfterAutoTaskDueKind = "execution_plus_days" | "anchor_plus_days" | "custom_datetime";
+
+/** Task row appended to related demo `tasks` when the transition completes. */
+export type AfterAutoTask = {
+  id: string;
+  /** `task_type` picklist option id on the Tasks module row. */
+  taskTypeOptionId: string;
+  /** Due strategy: execution calendar day + offset, created date + offset, or fixed admin datetime. */
+  dueKind: AfterAutoTaskDueKind;
+  /** For `anchor_plus_days`, always the lead record’s created date (no configurable anchor). */
+  dueAnchor: AfterTransitionTaskDueAnchor;
+  /** Calendar days added to the anchor’s local calendar day (ignored for `custom_datetime`). */
+  offsetDays: number;
+  /** Optional local time `HH:mm` applied to the computed due calendar day (not used for `custom_datetime`). */
+  dueTimeHm: string;
+  /** When `dueKind` is `custom_datetime` — `datetime-local` string. */
+  customDueDatetime: string;
+};
+
+export type AfterCreateRecordTargetModule = "leads" | "channel_partner";
+
+export type AfterCreateRecordFieldBinding = {
+  id: string;
+  targetFieldApiKey: string;
+  valueMode: "literal" | "map";
+  /** When `valueMode` is `literal`. */
+  literalValue: string;
+  /** Source for mapping — blueprint module is Leads in this prototype. */
+  sourceModule: "leads";
+  /** Lead field `apiKey` when `valueMode` is `map`. */
+  sourceFieldApiKey: string;
+};
+
+export type AfterCreateRecord = {
+  id: string;
+  targetModule: AfterCreateRecordTargetModule;
+  fieldBindings: AfterCreateRecordFieldBinding[];
+};
+
+export type BlueprintAfterBlock = {
+  fieldUpdates: AfterFieldUpdate[];
+  autoTasks: AfterAutoTask[];
+  createRecords: AfterCreateRecord[];
+};
+
 export type BlueprintTransition = {
   id: string;
   sourceStateId: string;
@@ -64,10 +117,8 @@ export type BlueprintTransition = {
     /** When the task block is shown, require the rep to complete it. */
     taskMandatory: boolean;
   };
-  /** After the move succeeds: auto-set field values (dates, literals, clear). */
-  after: {
-    fieldUpdates: AfterFieldUpdate[];
-  };
+  /** After the move succeeds: field updates, auto tasks, cross-module creates. */
+  after: BlueprintAfterBlock;
 };
 
 export type BlueprintDocument = {
@@ -110,7 +161,13 @@ export function createDefaultTransition(
     },
     after: {
       fieldUpdates: [],
+      autoTasks: [],
+      createRecords: [],
     },
   };
+}
+
+export function emptyAfterBlock(): BlueprintAfterBlock {
+  return { fieldUpdates: [], autoTasks: [], createRecords: [] };
 }
 

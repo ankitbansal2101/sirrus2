@@ -1,6 +1,6 @@
 import { STANDARD_BLUEPRINT_STATES } from "@/lib/fields-config/standard-defaults";
 import type { AfterFieldUpdate, BlueprintDocument, BlueprintTransition } from "@/lib/blueprint/types";
-import { createDefaultTransition, newEntityId } from "@/lib/blueprint/types";
+import { createDefaultTransition, emptyAfterBlock, newEntityId } from "@/lib/blueprint/types";
 
 export const STANDARD_BLUEPRINT_ID = "bp_standard";
 
@@ -21,12 +21,15 @@ function dtUpdate(fieldId: string, fieldLabel: string): AfterFieldUpdate {
 function patchTr(
   base: BlueprintTransition,
   form: Partial<BlueprintTransition["form"]>,
-  after: AfterFieldUpdate[],
+  fieldUpdates: AfterFieldUpdate[],
 ): BlueprintTransition {
   return {
     ...base,
     form: { ...base.form, ...form },
-    after: { fieldUpdates: after },
+    after: {
+      ...(base.after ?? emptyAfterBlock()),
+      fieldUpdates,
+    },
   };
 }
 

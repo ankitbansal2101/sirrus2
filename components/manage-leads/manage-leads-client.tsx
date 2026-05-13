@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLUEPRINT_CHANGED_EVENT, loadBlueprint } from "@/lib/blueprint/storage";
 import type { BlueprintDocument, BlueprintTransition, TransitionFormField } from "@/lib/blueprint/types";
+import { transitionCreateRecordDraftKey, collectAllCreateRecordRepNeeds } from "@/lib/blueprint/after-transition-runtime";
+import { applyTransitionAutomation } from "@/lib/leads/apply-transition-effects";
 import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import { FIELDS_SCHEMA_CHANGED_EVENT, loadFieldsSchema } from "@/lib/fields-config/schema-storage";
 import type { FieldDefinition } from "@/lib/fields-config/types";
@@ -162,6 +164,7 @@ function validateTransition(
   t: BlueprintTransition,
   draft: Record<string, string>,
   fieldDefs: FieldDefinition[],
+  lead: LeadRecord | null,
 ): string | null {
   for (const f of t.form.fields) {
     const k = transitionFormDraftKey(t, f);
@@ -181,6 +184,14 @@ function validateTransition(
     const d = (draft[`${t.id}:__task_date__`] ?? "").trim();
     const tm = (draft[`${t.id}:__task_time__`] ?? "").trim();
     if (!d || !tm) return "Follow-up date and time are required.";
+  }
+  if (lead) {
+    for (const need of collectAllCreateRecordRepNeeds(t, lead, fieldDefs)) {
+      const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
+      if (!(draft[k] ?? "").trim()) {
+        return `Enter “${need.label}” for the new ${need.targetModule === "channel_partner" ? "Channel Partner" : "Lead"} record.`;
+      }
+    }
   }
   return null;
 }
@@ -227,6 +238,7 @@ export function ManageLeadsClient() {
 
   const [selectedTransition, setSelectedTransition] = useState<BlueprintTransition | null>(null);
   const [formDraft, setFormDraft] = useState<Record<string, string>>({});
+  const [createRecordFillOpen, setCreateRecordFillOpen] = useState(false);
 
   const [stageTab, setStageTab] = useState<"all" | string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -266,12 +278,14 @@ export function ManageLeadsClient() {
     else setTab("overview");
     setSelectedTransition(null);
     setFormDraft({});
+    setCreateRecordFillOpen(false);
   }, [selectedId, tabParam]);
 
   useEffect(() => {
     if (tab !== "change-stage") {
       setSelectedTransition(null);
       setFormDraft({});
+      setCreateRecordFillOpen(false);
     }
   }, [tab]);
 
@@ -282,6 +296,7 @@ export function ManageLeadsClient() {
     if (!next) {
       setSelectedTransition(null);
       setFormDraft({});
+      setCreateRecordFillOpen(false);
       return;
     }
     if (next !== selectedTransition) setSelectedTransition(next);
@@ -301,6 +316,11 @@ export function ManageLeadsClient() {
 
   const selectedLead = useMemo(() => leads.find((l) => l.id === selectedId) ?? null, [leads, selectedId]);
 
+  const createRecordRepNeeds = useMemo(() => {
+    if (!selectedLead || !selectedTransition) return [];
+    return collectAllCreateRecordRepNeeds(selectedTransition, selectedLead, fields);
+  }, [selectedLead, selectedTransition, fields]);
+
   const closeDrawer = useCallback(() => {
     const q = new URLSearchParams(searchParams.toString());
     q.delete("id");
@@ -308,6 +328,7 @@ export function ManageLeadsClient() {
     router.push(`/developer/manage-leads${q.toString() ? `?${q}` : ""}`);
     setSelectedTransition(null);
     setFormDraft({});
+    setCreateRecordFillOpen(false);
   }, [router, searchParams]);
 
   const navigateDrawerTab = useCallback(
@@ -339,7 +360,8 @@ export function ManageLeadsClient() {
     return outgoingTransitions(blueprint, currentState.id);
   }, [blueprint, currentState]);
 
-  const pickTransition = useCallback((t: BlueprintTransition) => {
+  const pickTransition = useCallback((t: BlueprintTransition, lead: LeadRecord | null) => {
+    setCreateRecordFillOpen(false);
     setSelectedTransition(t);
     setFormDraft((prev) => {
       const next = { ...prev };
@@ -352,20 +374,42 @@ export function ManageLeadsClient() {
         next[`${t.id}:__task_date__`] = next[`${t.id}:__task_date__`] ?? "";
         next[`${t.id}:__task_time__`] = next[`${t.id}:__task_time__`] ?? "";
       }
+      if (lead) {
+        for (const need of collectAllCreateRecordRepNeeds(t, lead, fields)) {
+          const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
+          if (next[k] === undefined) next[k] = "";
+        }
+      }
       return next;
     });
-  }, []);
+  }, [fields]);
 
   const onSaveTransition = useCallback(() => {
     if (!selectedLead || !selectedTransition || !blueprint || !stageField) return;
-    const err = validateTransition(selectedTransition, formDraft, fields);
+    const err = validateTransition(selectedTransition, formDraft, fields, selectedLead);
     if (err) {
       setBanner(err);
       window.setTimeout(() => setBanner(null), 4000);
       return;
     }
-    const updated = applyTransitionToLead(selectedLead, selectedTransition, blueprint, stageField, formDraft);
-    const list = upsertLead(leads, updated);
+    const executedAt = new Date();
+    const afterForm = applyTransitionToLead(selectedLead, selectedTransition, blueprint, stageField, formDraft);
+    const scratchLeads = leads.map((l) => (l.id === afterForm.id ? afterForm : l));
+    const { lead: withAuto, extraLeads } = applyTransitionAutomation({
+      lead: afterForm,
+      transition: selectedTransition,
+      leadFields: fields,
+      formDraft,
+      executedAt,
+      newLeadUuid,
+      scratchLeads,
+      nextDisplayIdForLeads,
+      seedRelatedDemo: seedRelatedDemoForLead,
+    });
+    let list = upsertLead(leads, withAuto);
+    for (const el of extraLeads) {
+      list = upsertLead(list, el);
+    }
     setLeads(list);
     saveLeads(list);
     setBanner("Stage updated (saved in this browser).");
@@ -373,7 +417,8 @@ export function ManageLeadsClient() {
     setSelectedTransition(null);
     setFormDraft({});
     setTab("overview");
-  }, [selectedLead, selectedTransition, blueprint, stageField, formDraft, leads]);
+    setCreateRecordFillOpen(false);
+  }, [selectedLead, selectedTransition, blueprint, stageField, formDraft, leads, fields]);
 
   const stageLabelForLead = useCallback(
     (lead: LeadRecord) => {
@@ -488,9 +533,9 @@ export function ManageLeadsClient() {
   }, []);
 
   const canSaveTransition = useMemo(() => {
-    if (!selectedTransition) return false;
-    return validateTransition(selectedTransition, formDraft, fields) === null;
-  }, [selectedTransition, formDraft, fields]);
+    if (!selectedTransition || !selectedLead) return false;
+    return validateTransition(selectedTransition, formDraft, fields, selectedLead) === null;
+  }, [selectedTransition, formDraft, fields, selectedLead]);
 
   const borderCell = "border-b border-border-soft";
   const headText = "text-[10px] font-semibold uppercase tracking-wider text-muted";
@@ -1139,7 +1184,7 @@ export function ManageLeadsClient() {
                                 <button
                                   key={tr.id}
                                   type="button"
-                                  onClick={() => pickTransition(tr)}
+                                  onClick={() => selectedLead && pickTransition(tr, selectedLead)}
                                   className="flex cursor-pointer items-center rounded-full border-[1.5px] px-5 py-2"
                                   style={{
                                     borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
@@ -1171,6 +1216,19 @@ export function ManageLeadsClient() {
                                 }
                               />
                             ))}
+
+                            {selectedLead && createRecordRepNeeds.length > 0 ? (
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => setCreateRecordFillOpen(true)}
+                                  className="w-full rounded-full border-0 bg-[#e4e5e6] px-5 py-2.5 text-left text-sm font-medium text-[#1f1750] outline-none ring-2 ring-transparent transition hover:bg-[#dcdcdf] focus:ring-[#34369c]/25"
+                                >
+                                  Fill new record details ({createRecordRepNeeds.length} field
+                                  {createRecordRepNeeds.length === 1 ? "" : "s"}) — opens in a popup
+                                </button>
+                              </div>
+                            ) : null}
 
                             {selectedTransition.form.includeRemark ? (
                               <div className="mb-2">
@@ -1259,7 +1317,10 @@ export function ManageLeadsClient() {
                             <div className="mt-8 flex gap-4">
                               <button
                                 type="button"
-                                onClick={() => setSelectedTransition(null)}
+                                onClick={() => {
+                                  setCreateRecordFillOpen(false);
+                                  setSelectedTransition(null);
+                                }}
                                 className="flex flex-1 cursor-pointer items-center justify-center rounded-full border py-3 text-sm font-semibold text-accent"
                                 style={{ borderColor: "rgb(52, 54, 156)", backgroundColor: "rgb(250, 250, 250)" }}
                               >
@@ -1295,6 +1356,74 @@ export function ManageLeadsClient() {
                 </div>
               </div>
             </div>
+            {createRecordFillOpen && selectedLead && selectedTransition && createRecordRepNeeds.length > 0 ? (
+              <div
+                className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center p-4"
+                style={{ backgroundColor: "rgba(31, 23, 80, 0.35)" }}
+                role="presentation"
+                onClick={() => setCreateRecordFillOpen(false)}
+              >
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="create-record-fill-title"
+                  className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#fafafa] p-6 shadow-xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 id="create-record-fill-title" className="text-base font-semibold text-[#1f1750]">
+                    New record details
+                  </h2>
+                  <p className="mt-1 text-xs text-[#7e7a95]">
+                    Required for this transition. Values are kept when you close this popup.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    {createRecordRepNeeds.map((need) => (
+                      <div key={`${need.createRecordId}-${need.targetFieldApiKey}`} className="space-y-2">
+                        <label className="mb-2 block text-sm font-medium text-[#1f1750]">
+                          {need.label}
+                          <span className="text-[#ff6678]"> *</span>
+                          <span className="ml-1 text-xs font-normal text-[#7e7a95]">
+                            (new {need.targetModule === "channel_partner" ? "Channel Partner" : "Lead"})
+                          </span>
+                        </label>
+                        <input
+                          type={need.fieldDef?.dataType === "phone" ? "tel" : "text"}
+                          value={
+                            formDraft[
+                              transitionCreateRecordDraftKey(
+                                selectedTransition.id,
+                                need.createRecordId,
+                                need.targetFieldApiKey,
+                              )
+                            ] ?? ""
+                          }
+                          onChange={(e) =>
+                            setFormDraft((d) => ({
+                              ...d,
+                              [transitionCreateRecordDraftKey(
+                                selectedTransition.id,
+                                need.createRecordId,
+                                need.targetFieldApiKey,
+                              )]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-full border-0 bg-[#e4e5e6] px-5 py-2.5 text-base text-[#1f1750] outline-none focus:ring-2 focus:ring-[#34369c]/25"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCreateRecordFillOpen(false)}
+                      className="rounded-full border border-[#34369c] bg-white px-5 py-2 text-sm font-semibold text-[#34369c]"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </aside>
         </div>
       ) : null}
