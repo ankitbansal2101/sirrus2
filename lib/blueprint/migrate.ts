@@ -8,9 +8,16 @@ import type {
   AfterTransitionTaskDueAnchor,
   BlueprintAfterBlock,
   BlueprintDocument,
+  BlueprintNodeSize,
+  BlueprintState,
+  BlueprintSubstage,
+  BlueprintSubstageExit,
+  BlueprintSubstageTransition,
   BlueprintTransition,
   TransitionFormField,
+  TransitionFormTool,
 } from "@/lib/blueprint/types";
+import { labelForTransitionToolId } from "@/lib/blueprint/transition-tools";
 import { newEntityId } from "@/lib/blueprint/types";
 import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form-shape";
 import type { FieldDefinition } from "@/lib/fields-config/types";
@@ -25,6 +32,14 @@ function normalizeTaskPresetType(label: string): "Follow up" | "Site visit" {
 }
 
 const AFTER_KINDS: AfterFieldUpdate["valueKind"][] = ["clear", "literal", "execution_date", "execution_date_time"];
+
+function normalizeNodeSize(raw: unknown): BlueprintNodeSize | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const width = Number((raw as { width?: unknown }).width);
+  const height = Number((raw as { height?: unknown }).height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return undefined;
+  return { width, height };
+}
 
 function normalizeAfterFieldUpdate(raw: unknown): AfterFieldUpdate {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -140,6 +155,26 @@ function finalizeTransitionForm(
   const taskPresetType = normalizeTaskPresetType(storedPreset || fromDerived || "Follow up");
   const taskMandatory = Boolean(base.taskMandatory);
 
+  const tools: TransitionFormTool[] = Array.isArray(base.tools)
+    ? (base.tools as unknown[])
+        .map((row): TransitionFormTool | null => {
+          if (!row || typeof row !== "object") return null;
+          const o = row as Record<string, unknown>;
+          const toolId = typeof o.toolId === "string" ? o.toolId.trim() : "";
+          if (!toolId) return null;
+          return {
+            id: typeof o.id === "string" && o.id.trim() ? o.id.trim() : newEntityId("tl"),
+            toolId,
+            label:
+              typeof o.label === "string" && o.label.trim()
+                ? o.label.trim()
+                : labelForTransitionToolId(toolId),
+            mandatory: Boolean(o.mandatory),
+          };
+        })
+        .filter((x): x is TransitionFormTool => x !== null)
+    : [];
+
   return {
     message,
     fields,
@@ -148,6 +183,7 @@ function finalizeTransitionForm(
     includeTasks,
     taskPresetType,
     taskMandatory,
+    tools,
   };
 }
 
@@ -203,10 +239,16 @@ export function migrateTransition(
   const legacyAfterTasks = legacyAfter?.tasks ?? [];
   const extraLegacy = [...taskPrompts, ...legacyAfterTasks];
 
+  const targetSubstageId =
+    typeof raw.targetSubstageId === "string" && raw.targetSubstageId.trim()
+      ? raw.targetSubstageId.trim()
+      : undefined;
+
   return {
     id: String(raw.id),
     sourceStateId: String(raw.sourceStateId),
     targetStateId: String(raw.targetStateId),
+    targetSubstageId,
     name: String(raw.name ?? ""),
     enabled: raw.enabled !== false,
     form: finalizeTransitionForm(
@@ -277,12 +319,138 @@ function syncTransitionFormFieldsWithSchema(
   }));
 }
 
+function normalizeSubstage(raw: unknown): BlueprintSubstage {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const posRaw = o.position;
+  const position =
+    posRaw && typeof posRaw === "object"
+      ? { x: Number((posRaw as { x?: unknown }).x) || 0, y: Number((posRaw as { y?: unknown }).y) || 0 }
+      : undefined;
+  return {
+    id: typeof o.id === "string" ? o.id : newEntityId("ss"),
+    label: typeof o.label === "string" ? o.label.trim() : "Sub-stage",
+    position,
+    size: normalizeNodeSize(o.size),
+  };
+}
+
+function normalizeSubstageExit(raw: unknown, labelOf: (apiKey: string) => string): BlueprintSubstageExit | null {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const sourceSubstageId = typeof o.sourceSubstageId === "string" ? o.sourceSubstageId : "";
+  const targetStateId = typeof o.targetStateId === "string" ? o.targetStateId : "";
+  if (!sourceSubstageId || !targetStateId) return null;
+  const legacy = migrateTransition(
+    {
+      ...o,
+      sourceStateId: sourceSubstageId,
+      targetStateId,
+    } as Record<string, unknown>,
+    labelOf,
+  );
+  return {
+    id: legacy.id,
+    name: legacy.name,
+    enabled: legacy.enabled,
+    form: legacy.form,
+    after: legacy.after,
+    sourceSubstageId,
+    targetStateId,
+  };
+}
+
+function normalizeSubstageTransition(raw: unknown, labelOf: (apiKey: string) => string): BlueprintSubstageTransition {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const legacy = migrateTransition(
+    {
+      ...o,
+      sourceStateId: o.sourceSubstageId ?? o.sourceStateId,
+      targetStateId: o.targetSubstageId ?? o.targetStateId,
+    } as Record<string, unknown>,
+    labelOf,
+  );
+  return {
+    id: legacy.id,
+    name: legacy.name,
+    enabled: legacy.enabled,
+    form: legacy.form,
+    after: legacy.after,
+    sourceSubstageId: String(o.sourceSubstageId ?? o.sourceStateId ?? ""),
+    targetSubstageId: String(o.targetSubstageId ?? o.targetStateId ?? ""),
+  };
+}
+
+function normalizeBlueprintState(raw: unknown, labelOf: (apiKey: string) => string): BlueprintState {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const substagesRaw = o.substages;
+  const substages = Array.isArray(substagesRaw)
+    ? substagesRaw.map(normalizeSubstage).filter((s) => s.label.length > 0)
+    : undefined;
+  const substageIds = new Set(substages?.map((s) => s.id) ?? []);
+  const rawDefaultSubstageId = typeof o.defaultSubstageId === "string" ? o.defaultSubstageId : "";
+  const defaultSubstageId = substageIds.has(rawDefaultSubstageId)
+    ? rawDefaultSubstageId
+    : substages?.[0]?.id;
+  const transitionsRaw = o.substageTransitions;
+  let substageTransitions = Array.isArray(transitionsRaw)
+    ? transitionsRaw.map((t) => normalizeSubstageTransition(t, labelOf))
+    : undefined;
+  if (substageTransitions?.length) {
+    substageTransitions = substageTransitions.filter(
+      (t) => substageIds.has(t.sourceSubstageId) && substageIds.has(t.targetSubstageId),
+    );
+    if (!substageTransitions.length) substageTransitions = undefined;
+  }
+
+  const exitsRaw = o.substageExits;
+  let substageExits = Array.isArray(exitsRaw)
+    ? exitsRaw.map((x) => normalizeSubstageExit(x, labelOf)).filter((x): x is BlueprintSubstageExit => x !== null)
+    : undefined;
+  if (substageExits?.length) {
+    substageExits = substageExits.filter((x) => substageIds.has(x.sourceSubstageId));
+    if (!substageExits.length) substageExits = undefined;
+  }
+
+  const groupPosRaw = o.substageGroupPosition;
+  const substageGroupPosition =
+    groupPosRaw && typeof groupPosRaw === "object"
+      ? {
+          x: Number((groupPosRaw as { x?: unknown }).x) || 0,
+          y: Number((groupPosRaw as { y?: unknown }).y) || 0,
+        }
+      : undefined;
+  const substageGroupSize = normalizeNodeSize(o.substageGroupSize);
+
+  return {
+    id: typeof o.id === "string" ? o.id : newEntityId("st"),
+    label: typeof o.label === "string" ? o.label : "Stage",
+    position:
+      o.position && typeof o.position === "object"
+        ? {
+            x: Number((o.position as { x?: unknown }).x) || 0,
+            y: Number((o.position as { y?: unknown }).y) || 0,
+          }
+        : { x: 0, y: 0 },
+    size: normalizeNodeSize(o.size),
+    substages: substages?.length ? substages : undefined,
+    defaultSubstageId: substages?.length ? defaultSubstageId : undefined,
+    substageTransitions,
+    substageExits,
+    substageGroupPosition: substages?.length ? substageGroupPosition : undefined,
+    substageGroupSize: substages?.length ? substageGroupSize : undefined,
+  };
+}
+
 export function migrateBlueprintDocument(doc: BlueprintDocument, fieldRows?: FieldDefinition[]): BlueprintDocument {
   const rows = fieldRows ?? createDefaultLeadFields();
   const labelOf = buildFieldLabelLookup(rows);
   const migrated = doc.transitions.map((t) => migrateTransition({ ...(t as unknown as Record<string, unknown>) }, labelOf));
+  const states = doc.states.map((s) => normalizeBlueprintState(s, labelOf));
+  const substageField =
+    typeof doc.substageField === "string" && doc.substageField.trim() ? doc.substageField.trim() : undefined;
   return {
     ...doc,
+    substageField,
+    states,
     transitions: syncTransitionFormFieldsWithSchema(migrated, rows).map((t) => ({
       ...t,
       after: normalizeBlueprintAfterBlock(t.after),

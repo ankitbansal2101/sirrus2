@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { AfterFieldUpdate, BlueprintTransition, LeadFieldOption, TransitionFieldKind } from "@/lib/blueprint/types";
+import type { AfterFieldUpdate, LeadFieldOption, TransitionAutomation, TransitionFieldKind } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
 import { TASK_TYPE_PRESETS, coerceTaskPresetType } from "@/lib/blueprint/task-presets";
+import { TRANSITION_TOOL_PRESETS, labelForTransitionToolId } from "@/lib/blueprint/transition-tools";
 import { AfterAutomationPanel } from "@/components/blueprint-configurator/after-transition-config";
 import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form-shape";
 import { IconPlus, IconTrash } from "@/components/icons";
@@ -14,12 +15,12 @@ import { optionsSorted } from "@/lib/fields-config/types";
 type PhaseTab = "during" | "after";
 
 type Props = {
-  transition: BlueprintTransition;
+  transition: TransitionAutomation;
   /** Lead fields from Fields configurator (`apiKey` → label). */
   fieldOptions: LeadFieldOption[];
   /** Full field schema from Fields configurator — drives After auto-value editors. */
   fieldDefinitions: FieldDefinition[];
-  onChange: (next: BlueprintTransition) => void;
+  onChange: (next: TransitionAutomation) => void;
   onDelete: () => void;
   onClose: () => void;
   /** When true, panel chrome (width, left border) is provided by the parent column. */
@@ -730,6 +731,124 @@ export function TransitionInspector({
                   </div>
                 ) : null}
               </div>
+            </section>
+
+            <section className="space-y-3 border-t border-border-soft pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted">Tools</h3>
+                <select
+                  aria-label="Add tool"
+                  value=""
+                  onChange={(e) => {
+                    const toolId = e.target.value;
+                    if (!toolId) return;
+                    if ((transition.form.tools ?? []).some((t) => t.toolId === toolId)) return;
+                    onChange({
+                      ...transition,
+                      form: {
+                        ...transition.form,
+                        tools: [
+                          ...(transition.form.tools ?? []),
+                          {
+                            id: newEntityId("tl"),
+                            toolId,
+                            label: labelForTransitionToolId(toolId),
+                            mandatory: false,
+                          },
+                        ],
+                      },
+                    });
+                  }}
+                  className="max-w-[9rem] rounded-md border border-border-soft bg-white px-1.5 py-0.5 text-[10px] font-semibold text-accent"
+                >
+                  <option value="">+ Add tool</option>
+                  {TRANSITION_TOOL_PRESETS.filter(
+                    (p) => !(transition.form.tools ?? []).some((t) => t.toolId === p.id),
+                  ).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(transition.form.tools ?? []).length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border-soft bg-white/80 px-2 py-2 text-[10px] text-muted">
+                  Add SV OTP flow, SV Recorder, or other tools the rep must run on this transition.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {(transition.form.tools ?? []).map((tool, idx) => (
+                    <li key={tool.id} className="rounded-lg border border-border-soft bg-white p-2 shadow-sm">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-medium text-muted">Tool {idx + 1}</span>
+                        <button
+                          type="button"
+                          className="text-[10px] font-semibold text-red-600 hover:underline"
+                          onClick={() =>
+                            onChange({
+                              ...transition,
+                              form: {
+                                ...transition.form,
+                                tools: (transition.form.tools ?? []).filter((x) => x.id !== tool.id),
+                              },
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <label className="block text-[10px] text-muted">Tool</label>
+                      <select
+                        value={tool.toolId}
+                        onChange={(e) => {
+                          const toolId = e.target.value;
+                          onChange({
+                            ...transition,
+                            form: {
+                              ...transition.form,
+                              tools: (transition.form.tools ?? []).map((x) =>
+                                x.id === tool.id
+                                  ? {
+                                      ...x,
+                                      toolId,
+                                      label: labelForTransitionToolId(toolId),
+                                    }
+                                  : x,
+                              ),
+                            },
+                          });
+                        }}
+                        className="mt-0.5 w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs"
+                      >
+                        {TRANSITION_TOOL_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="mt-2 block text-[10px] text-muted">Mark as</label>
+                      <select
+                        value={tool.mandatory ? "mandatory" : "optional"}
+                        onChange={(e) =>
+                          onChange({
+                            ...transition,
+                            form: {
+                              ...transition.form,
+                              tools: (transition.form.tools ?? []).map((x) =>
+                                x.id === tool.id ? { ...x, mandatory: e.target.value === "mandatory" } : x,
+                              ),
+                            },
+                          })
+                        }
+                        className="mt-0.5 w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs"
+                      >
+                        <option value="mandatory">Mandatory</option>
+                        <option value="optional">Non-mandatory</option>
+                      </select>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
         ) : null}

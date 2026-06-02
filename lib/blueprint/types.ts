@@ -4,10 +4,45 @@ export type LeadFieldOption = {
   label: string;
 };
 
+export type BlueprintNodeSize = {
+  width: number;
+  height: number;
+};
+
+/** Sub-stage under a parent blueprint stage (e.g. Site Visit → Scheduled). */
+export type BlueprintSubstage = {
+  id: string;
+  label: string;
+  /** Position on the unified blueprint canvas (near parent stage). */
+  position?: { x: number; y: number };
+  /** Custom pill size on the blueprint canvas. */
+  size?: BlueprintNodeSize;
+};
+
+/** Sub-stage → another main stage (e.g. Post-qualified → Qualified) with During/After automation. */
+export type BlueprintSubstageExit = TransitionAutomation & {
+  sourceSubstageId: string;
+  targetStateId: string;
+};
+
 export type BlueprintState = {
   id: string;
   label: string;
   position: { x: number; y: number };
+  /** Custom main-stage pill size on the blueprint canvas. */
+  size?: BlueprintNodeSize;
+  /** Optional sub-stages within this stage; stored on leads via `BlueprintDocument.substageField`. */
+  substages?: BlueprintSubstage[];
+  /** Sub-stage selected automatically when a lead enters this stage. */
+  defaultSubstageId?: string;
+  /** Flow edges between sub-stages (during + after automation per edge). */
+  substageTransitions?: BlueprintSubstageTransition[];
+  /** When a sub-stage path completes, lead can move to another main stage. */
+  substageExits?: BlueprintSubstageExit[];
+  /** Top-left of the dashed sub-stage group box on the canvas. */
+  substageGroupPosition?: { x: number; y: number };
+  /** Custom width/height of the dashed sub-stage group (drag corners on canvas). */
+  substageGroupSize?: BlueprintNodeSize;
 };
 
 export type TransitionFieldKind = "text" | "textarea" | "picklist" | "remark" | "multi_select";
@@ -94,38 +129,62 @@ export type BlueprintAfterBlock = {
   createRecords: AfterCreateRecord[];
 };
 
-export type BlueprintTransition = {
+/** One tool on the During confirmation screen (from the global tool catalog). */
+export type TransitionFormTool = {
   id: string;
-  sourceStateId: string;
-  targetStateId: string;
+  toolId: string;
+  label: string;
+  mandatory: boolean;
+};
+
+/** Rep form + post-move automation shared by main-stage and sub-stage transitions. */
+export type TransitionDuringForm = {
+  message: string;
+  fields: TransitionFormField[];
+  includeRemark: boolean;
+  remarkMandatory: boolean;
+  includeTasks: boolean;
+  taskPresetType: string;
+  taskMandatory: boolean;
+  tools: TransitionFormTool[];
+};
+
+export type TransitionAutomation = {
+  id: string;
   name: string;
   enabled: boolean;
-  /**
-   * Admin configures what the rep *sees* on the move confirmation screen (not creating records here).
-   */
-  form: {
-    message: string;
-    fields: TransitionFormField[];
-    /** Show remarks box for this transition. */
-    includeRemark: boolean;
-    /** When remarks are shown, require the rep to fill them. */
-    remarkMandatory: boolean;
-    /** Show the task block for this transition. */
-    includeTasks: boolean;
-    /** Label/pattern for the task the rep sees (e.g. follow-up vs site visit). */
-    taskPresetType: string;
-    /** When the task block is shown, require the rep to complete it. */
-    taskMandatory: boolean;
-  };
-  /** After the move succeeds: field updates, auto tasks, cross-module creates. */
+  /** During: what the rep sees on the move confirmation screen. */
+  form: TransitionDuringForm;
+  /** After: field updates, auto tasks, cross-module creates. */
   after: BlueprintAfterBlock;
 };
+
+/** Transition between two sub-stages within one parent stage (main stage unchanged). */
+export type BlueprintSubstageTransition = TransitionAutomation & {
+  sourceSubstageId: string;
+  targetSubstageId: string;
+};
+
+export type BlueprintTransition = TransitionAutomation & {
+  sourceStateId: string;
+  /** Parent main stage the lead lands on. */
+  targetStateId: string;
+  /**
+   * When set, this main-stage transition enters the target at this sub-stage (drawn as stage → sub-stage on canvas).
+   * When unset and the target has sub-stages, the rep picks one on the move confirmation screen.
+   */
+  targetSubstageId?: string;
+};
+
+export const DEFAULT_SUBSTAGE_FIELD_API_KEY = "substage";
 
 export type BlueprintDocument = {
   id: string;
   name: string;
   module: string;
   stageField: string;
+  /** Lead field apiKey holding the active sub-stage id (defaults to `substage`). */
+  substageField?: string;
   states: BlueprintState[];
   transitions: BlueprintTransition[];
 };
@@ -138,17 +197,10 @@ export function newEntityId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createDefaultTransition(
-  sourceId: string,
-  targetId: string,
-  sourceLabel: string,
-  targetLabel: string,
-): BlueprintTransition {
+function defaultTransitionAutomation(name: string, idPrefix = "tr"): TransitionAutomation {
   return {
-    id: newEntityId("tr"),
-    sourceStateId: sourceId,
-    targetStateId: targetId,
-    name: `${sourceLabel} → ${targetLabel}`,
+    id: newEntityId(idPrefix),
+    name,
     enabled: true,
     form: {
       message: "",
@@ -158,12 +210,52 @@ export function createDefaultTransition(
       includeTasks: false,
       taskPresetType: "Follow up",
       taskMandatory: false,
+      tools: [],
     },
     after: {
       fieldUpdates: [],
       autoTasks: [],
       createRecords: [],
     },
+  };
+}
+
+export function createDefaultTransition(
+  sourceId: string,
+  targetId: string,
+  sourceLabel: string,
+  targetLabel: string,
+): BlueprintTransition {
+  return {
+    ...defaultTransitionAutomation(`${sourceLabel} → ${targetLabel}`),
+    sourceStateId: sourceId,
+    targetStateId: targetId,
+  };
+}
+
+export function createDefaultSubstageTransition(
+  sourceId: string,
+  targetId: string,
+  sourceLabel: string,
+  targetLabel: string,
+): BlueprintSubstageTransition {
+  return {
+    ...defaultTransitionAutomation(`${sourceLabel} → ${targetLabel}`, "sstr"),
+    sourceSubstageId: sourceId,
+    targetSubstageId: targetId,
+  };
+}
+
+export function createDefaultSubstageExit(
+  sourceSubstageId: string,
+  targetStateId: string,
+  sourceLabel: string,
+  targetLabel: string,
+): BlueprintSubstageExit {
+  return {
+    ...defaultTransitionAutomation(`${sourceLabel} → ${targetLabel}`, "sse"),
+    sourceSubstageId,
+    targetStateId,
   };
 }
 

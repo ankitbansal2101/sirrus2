@@ -4,8 +4,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLUEPRINT_CHANGED_EVENT, loadBlueprint } from "@/lib/blueprint/storage";
-import type { BlueprintDocument, BlueprintTransition, TransitionFormField } from "@/lib/blueprint/types";
+import type {
+  BlueprintDocument,
+  BlueprintSubstageExit,
+  BlueprintSubstageTransition,
+  BlueprintTransition,
+  TransitionAutomation,
+  TransitionFormField,
+} from "@/lib/blueprint/types";
 import { transitionCreateRecordDraftKey, collectAllCreateRecordRepNeeds } from "@/lib/blueprint/after-transition-runtime";
+import { transitionToolDraftKey } from "@/lib/blueprint/transition-tools";
 import { applyTransitionAutomation } from "@/lib/leads/apply-transition-effects";
 import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import { FIELDS_SCHEMA_CHANGED_EVENT, loadFieldsSchema } from "@/lib/fields-config/schema-storage";
@@ -14,11 +22,23 @@ import { createDefaultLeadFields, optionsSorted, usesOptions } from "@/lib/field
 import { applyAfterFieldUpdates } from "@/lib/leads/apply-after-updates";
 import { chipPaletteIndex, formatLeadFieldValue } from "@/lib/leads/display-value";
 import {
+  currentSubstageForLead,
+  defaultSubstageIdForState,
+  formatStageAndSubstage,
+  hasSubstageFlow,
+  outgoingSubstageExits,
+  outgoingSubstageTransitions,
   outgoingTransitions,
   stageFieldForBlueprint,
   stateFromStageValue,
   stateToStageOptionId,
+  substageFieldApiKey,
+  substagesForState,
   targetState,
+  targetStateForExit,
+  targetSubstage,
+  substagesSelectableOnTransition,
+  transitionTargetDisplayLabel,
 } from "@/lib/leads/stage-bridge";
 import {
   activeFilterClauseCount,
@@ -26,7 +46,14 @@ import {
   leadMatchesFilterConfig,
 } from "@/lib/leads/evaluate-lead-filters";
 import type { LeadFilterConfig } from "@/lib/leads/lead-filter-types";
-import { LEADS_CHANGED_EVENT, loadLeads, saveLeads, seedRelatedDemoForLead, upsertLead } from "@/lib/leads/storage";
+import {
+  appendBlueprintTestLeads,
+  LEADS_CHANGED_EVENT,
+  loadLeads,
+  saveLeads,
+  seedRelatedDemoForLead,
+  upsertLead,
+} from "@/lib/leads/storage";
 import type { LeadRecord } from "@/lib/leads/types";
 import { LeadFiltersDrawer } from "@/components/manage-leads/lead-filters-drawer";
 import { SavedLeadFiltersBar } from "@/components/manage-leads/saved-lead-filters-bar";
@@ -138,7 +165,7 @@ function paginationPages(current: number, totalPages: number): (number | "ellips
   return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", totalPages];
 }
 
-function transitionFormDraftKey(t: BlueprintTransition, row: TransitionFormField) {
+function transitionFormDraftKey(t: TransitionAutomation, row: TransitionFormField) {
   return `${t.id}:${row.id}`;
 }
 
@@ -160,8 +187,15 @@ function toggleMultiId(current: string, optId: string): string {
   return [...set].join(",");
 }
 
-function validateTransition(
-  t: BlueprintTransition,
+function seedToolDraftKeys(next: Record<string, string>, t: TransitionAutomation) {
+  for (const tool of t.form.tools ?? []) {
+    const k = transitionToolDraftKey(t.id, tool.id);
+    if (next[k] === undefined) next[k] = "";
+  }
+}
+
+function validateTransitionAutomation(
+  t: TransitionAutomation,
   draft: Record<string, string>,
   fieldDefs: FieldDefinition[],
   lead: LeadRecord | null,
@@ -185,6 +219,11 @@ function validateTransition(
     const tm = (draft[`${t.id}:__task_time__`] ?? "").trim();
     if (!d || !tm) return "Follow-up date and time are required.";
   }
+  for (const tool of t.form.tools ?? []) {
+    if (tool.mandatory && (draft[transitionToolDraftKey(t.id, tool.id)] ?? "") !== "1") {
+      return `Complete “${tool.label}” before continuing.`;
+    }
+  }
   if (lead) {
     for (const need of collectAllCreateRecordRepNeeds(t, lead, fieldDefs)) {
       const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
@@ -202,6 +241,7 @@ function applyTransitionToLead(
   doc: BlueprintDocument,
   stageField: FieldDefinition | undefined,
   draft: Record<string, string>,
+  entrySubstageId?: string,
 ): LeadRecord {
   const tgt = targetState(doc, t);
   if (!tgt || !stageField) return lead;
@@ -215,8 +255,67 @@ function applyTransitionToLead(
   const opt = stateToStageOptionId(stageField, tgt);
   if (opt) nextValues[stageField.apiKey] = opt;
 
+  const ssKey = substageFieldApiKey(doc);
+  const ssId = (t.targetSubstageId?.trim() || entrySubstageId?.trim() || "").trim();
+  if (ssId) nextValues[ssKey] = ssId;
+  else delete nextValues[ssKey];
+
   nextValues = applyAfterFieldUpdates(nextValues, t.after.fieldUpdates);
 
+  return {
+    ...lead,
+    values: nextValues,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function applySubstageExitToLead(
+  lead: LeadRecord,
+  ex: BlueprintSubstageExit,
+  doc: BlueprintDocument,
+  stageField: FieldDefinition | undefined,
+  draft: Record<string, string>,
+): LeadRecord {
+  const tgt = targetStateForExit(doc, ex);
+  if (!tgt || !stageField) return lead;
+
+  let nextValues = { ...lead.values };
+  for (const f of ex.form.fields) {
+    const key = transitionFormDraftKey(ex, f);
+    nextValues[f.fieldId] = draft[key] ?? "";
+  }
+
+  const opt = stateToStageOptionId(stageField, tgt);
+  if (opt) nextValues[stageField.apiKey] = opt;
+
+  const ssKey = substageFieldApiKey(doc);
+  const defaultSs = defaultSubstageIdForState(tgt);
+  if (defaultSs) nextValues[ssKey] = defaultSs;
+  else delete nextValues[ssKey];
+
+  nextValues = applyAfterFieldUpdates(nextValues, ex.after.fieldUpdates);
+
+  return {
+    ...lead,
+    values: nextValues,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function applySubstageTransitionToLead(
+  lead: LeadRecord,
+  t: BlueprintSubstageTransition,
+  doc: BlueprintDocument,
+  draft: Record<string, string>,
+): LeadRecord {
+  let nextValues = { ...lead.values };
+  for (const f of t.form.fields) {
+    const key = transitionFormDraftKey(t, f);
+    nextValues[f.fieldId] = draft[key] ?? "";
+  }
+  const ssKey = substageFieldApiKey(doc);
+  nextValues[ssKey] = t.targetSubstageId;
+  nextValues = applyAfterFieldUpdates(nextValues, t.after.fieldUpdates);
   return {
     ...lead,
     values: nextValues,
@@ -237,6 +336,10 @@ export function ManageLeadsClient() {
   const [banner, setBanner] = useState<string | null>(null);
 
   const [selectedTransition, setSelectedTransition] = useState<BlueprintTransition | null>(null);
+  const [selectedSubstageTransition, setSelectedSubstageTransition] = useState<BlueprintSubstageTransition | null>(null);
+  const [selectedSubstageExit, setSelectedSubstageExit] = useState<BlueprintSubstageExit | null>(null);
+  /** Sub-stage chosen on a main-stage move when the transition does not pin `targetSubstageId`. */
+  const [selectedEntrySubstageId, setSelectedEntrySubstageId] = useState("");
   const [formDraft, setFormDraft] = useState<Record<string, string>>({});
   const [createRecordFillOpen, setCreateRecordFillOpen] = useState(false);
 
@@ -277,6 +380,8 @@ export function ManageLeadsClient() {
     if (tabParam === "change-stage") setTab("change-stage");
     else setTab("overview");
     setSelectedTransition(null);
+    setSelectedSubstageTransition(null);
+    setSelectedEntrySubstageId("");
     setFormDraft({});
     setCreateRecordFillOpen(false);
   }, [selectedId, tabParam]);
@@ -284,6 +389,9 @@ export function ManageLeadsClient() {
   useEffect(() => {
     if (tab !== "change-stage") {
       setSelectedTransition(null);
+      setSelectedSubstageTransition(null);
+      setSelectedSubstageExit(null);
+      setSelectedEntrySubstageId("");
       setFormDraft({});
       setCreateRecordFillOpen(false);
     }
@@ -295,6 +403,7 @@ export function ManageLeadsClient() {
     const next = blueprint.transitions.find((tr) => tr.id === selectedTransition.id);
     if (!next) {
       setSelectedTransition(null);
+      setSelectedEntrySubstageId("");
       setFormDraft({});
       setCreateRecordFillOpen(false);
       return;
@@ -317,9 +426,14 @@ export function ManageLeadsClient() {
   const selectedLead = useMemo(() => leads.find((l) => l.id === selectedId) ?? null, [leads, selectedId]);
 
   const createRecordRepNeeds = useMemo(() => {
-    if (!selectedLead || !selectedTransition) return [];
-    return collectAllCreateRecordRepNeeds(selectedTransition, selectedLead, fields);
-  }, [selectedLead, selectedTransition, fields]);
+    const active = selectedSubstageTransition ?? selectedSubstageExit ?? selectedTransition;
+    if (!selectedLead || !active) return [];
+    return collectAllCreateRecordRepNeeds(active, selectedLead, fields);
+  }, [selectedLead, selectedTransition, selectedSubstageTransition, selectedSubstageExit, fields]);
+
+  const activeAutomation = selectedSubstageTransition ?? selectedSubstageExit ?? selectedTransition;
+  const pickedMainTransitionId = selectedTransition?.id ?? "";
+  const pickedSubstageExitId = selectedSubstageExit?.id ?? "";
 
   const closeDrawer = useCallback(() => {
     const q = new URLSearchParams(searchParams.toString());
@@ -327,6 +441,8 @@ export function ManageLeadsClient() {
     q.delete("tab");
     router.push(`/developer/manage-leads${q.toString() ? `?${q}` : ""}`);
     setSelectedTransition(null);
+    setSelectedSubstageTransition(null);
+    setSelectedEntrySubstageId("");
     setFormDraft({});
     setCreateRecordFillOpen(false);
   }, [router, searchParams]);
@@ -355,14 +471,107 @@ export function ManageLeadsClient() {
     return stateFromStageValue(blueprint, stageField, sid);
   }, [selectedLead, blueprint, stageField]);
 
-  const allowed = useMemo(() => {
+  const allowedStageTransitions = useMemo(() => {
     if (!blueprint || !currentState) return [];
     return outgoingTransitions(blueprint, currentState.id);
   }, [blueprint, currentState]);
 
-  const pickTransition = useCallback((t: BlueprintTransition, lead: LeadRecord | null) => {
+  const currentSubstage = useMemo(() => {
+    if (!blueprint || !currentState || !selectedLead) return null;
+    return currentSubstageForLead(blueprint, currentState, selectedLead);
+  }, [blueprint, currentState, selectedLead]);
+
+  const substageContextState = currentState;
+  const currentSubstages = useMemo(() => substagesForState(substageContextState), [substageContextState]);
+  const substageFlowActive = useMemo(() => hasSubstageFlow(substageContextState), [substageContextState]);
+
+  const selectedTransitionTarget = useMemo(() => {
+    if (!blueprint || !selectedTransition) return null;
+    return targetState(blueprint, selectedTransition) ?? null;
+  }, [blueprint, selectedTransition]);
+
+  const entrySubstagesToPick = useMemo(() => {
+    if (!blueprint || !selectedTransition || !selectedTransitionTarget) return [];
+    if (selectedTransition.targetSubstageId?.trim()) return [];
+    return substagesSelectableOnTransition(blueprint, selectedTransitionTarget, selectedTransition);
+  }, [blueprint, selectedTransition, selectedTransitionTarget]);
+
+  /** Active sub-stage for in-stage flow — only the lead's current sub-stage, not blueprint default. */
+  const flowSubstageId = currentSubstage?.id ?? "";
+
+  const allowedSubstage = useMemo(() => {
+    if (!substageContextState || !flowSubstageId) return [];
+    return outgoingSubstageTransitions(substageContextState, flowSubstageId);
+  }, [substageContextState, flowSubstageId]);
+
+  const allowedExits = useMemo(() => {
+    if (!currentState || !flowSubstageId) return [];
+    return outgoingSubstageExits(currentState, flowSubstageId);
+  }, [currentState, flowSubstageId]);
+
+  const useSubstageExitTransitions = allowedExits.length > 0;
+
+  const allowed = useMemo(() => {
+    if (useSubstageExitTransitions) return [];
+    return allowedStageTransitions;
+  }, [allowedStageTransitions, useSubstageExitTransitions]);
+
+  const allowMainStageSelection =
+    !selectedTransition &&
+    !selectedSubstageTransition &&
+    !selectedSubstageExit &&
+    (!substageFlowActive || !flowSubstageId || (allowedSubstage.length === 0 && allowedExits.length === 0));
+
+  useEffect(() => {
+    if (!substageContextState || !selectedSubstageTransition) return;
+    const next = substageContextState.substageTransitions?.find((t) => t.id === selectedSubstageTransition.id);
+    if (!next) {
+      setSelectedSubstageTransition(null);
+      setFormDraft({});
+      return;
+    }
+    if (next !== selectedSubstageTransition) setSelectedSubstageTransition(next);
+  }, [substageContextState, selectedSubstageTransition]);
+
+  useEffect(() => {
+    if (!currentState || !selectedSubstageExit) return;
+    const next = currentState.substageExits?.find((e) => e.id === selectedSubstageExit.id);
+    if (!next) {
+      setSelectedSubstageExit(null);
+      setFormDraft({});
+      return;
+    }
+    if (next !== selectedSubstageExit) setSelectedSubstageExit(next);
+  }, [currentState, selectedSubstageExit]);
+
+  const onPickSubstage = useCallback(
+    (substageId: string) => {
+      if (!selectedLead || !blueprint) return;
+      const key = substageFieldApiKey(blueprint);
+      const updated: LeadRecord = {
+        ...selectedLead,
+        values: { ...selectedLead.values, [key]: substageId },
+        updatedAt: new Date().toISOString(),
+      };
+      const list = upsertLead(leads, updated);
+      setLeads(list);
+      saveLeads(list);
+      setBanner("Sub-stage updated (saved in this browser).");
+      window.setTimeout(() => setBanner(null), 2800);
+      setSelectedTransition(null);
+      setSelectedSubstageTransition(null);
+      setSelectedSubstageExit(null);
+      setSelectedEntrySubstageId("");
+      setFormDraft({});
+    },
+    [selectedLead, blueprint, leads],
+  );
+
+  const pickSubstageTransition = useCallback((t: BlueprintSubstageTransition, lead: LeadRecord | null) => {
     setCreateRecordFillOpen(false);
-    setSelectedTransition(t);
+    setSelectedSubstageTransition(t);
+    setSelectedSubstageExit(null);
+    setSelectedTransition(null);
     setFormDraft((prev) => {
       const next = { ...prev };
       for (const f of t.form.fields) {
@@ -374,6 +583,7 @@ export function ManageLeadsClient() {
         next[`${t.id}:__task_date__`] = next[`${t.id}:__task_date__`] ?? "";
         next[`${t.id}:__task_time__`] = next[`${t.id}:__task_time__`] ?? "";
       }
+      seedToolDraftKeys(next, t);
       if (lead) {
         for (const need of collectAllCreateRecordRepNeeds(t, lead, fields)) {
           const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
@@ -384,16 +594,170 @@ export function ManageLeadsClient() {
     });
   }, [fields]);
 
+  const pickSubstageExit = useCallback((ex: BlueprintSubstageExit, lead: LeadRecord | null) => {
+    setCreateRecordFillOpen(false);
+    setSelectedSubstageExit(ex);
+    setSelectedSubstageTransition(null);
+    setSelectedTransition(null);
+    setSelectedEntrySubstageId("");
+    setFormDraft((prev) => {
+      const next = { ...prev };
+      for (const f of ex.form.fields) {
+        const k = transitionFormDraftKey(ex, f);
+        if (next[k] === undefined) next[k] = "";
+      }
+      if (ex.form.includeRemark) next[`${ex.id}:__remark__`] = next[`${ex.id}:__remark__`] ?? "";
+      if (ex.form.includeTasks) {
+        next[`${ex.id}:__task_date__`] = next[`${ex.id}:__task_date__`] ?? "";
+        next[`${ex.id}:__task_time__`] = next[`${ex.id}:__task_time__`] ?? "";
+      }
+      seedToolDraftKeys(next, ex);
+      if (lead) {
+        for (const need of collectAllCreateRecordRepNeeds(ex, lead, fields)) {
+          const k = transitionCreateRecordDraftKey(ex.id, need.createRecordId, need.targetFieldApiKey);
+          if (next[k] === undefined) next[k] = "";
+        }
+      }
+      return next;
+    });
+  }, [fields]);
+
+  const pickTransition = useCallback((t: BlueprintTransition, lead: LeadRecord | null) => {
+    setCreateRecordFillOpen(false);
+    setSelectedSubstageExit(null);
+    setSelectedSubstageTransition(null);
+    setSelectedTransition(t);
+    const tgt = blueprint ? targetState(blueprint, t) : null;
+    const entryOpts =
+      blueprint && tgt ? substagesSelectableOnTransition(blueprint, tgt, t) : [];
+    setSelectedEntrySubstageId(t.targetSubstageId?.trim() || entryOpts[0]?.id || "");
+    setFormDraft((prev) => {
+      const next = { ...prev };
+      for (const f of t.form.fields) {
+        const k = transitionFormDraftKey(t, f);
+        if (next[k] === undefined) next[k] = "";
+      }
+      if (t.form.includeRemark) next[`${t.id}:__remark__`] = next[`${t.id}:__remark__`] ?? "";
+      if (t.form.includeTasks) {
+        next[`${t.id}:__task_date__`] = next[`${t.id}:__task_date__`] ?? "";
+        next[`${t.id}:__task_time__`] = next[`${t.id}:__task_time__`] ?? "";
+      }
+      seedToolDraftKeys(next, t);
+      if (lead) {
+        for (const need of collectAllCreateRecordRepNeeds(t, lead, fields)) {
+          const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
+          if (next[k] === undefined) next[k] = "";
+        }
+      }
+      return next;
+    });
+  }, [fields, blueprint]);
+
   const onSaveTransition = useCallback(() => {
-    if (!selectedLead || !selectedTransition || !blueprint || !stageField) return;
-    const err = validateTransition(selectedTransition, formDraft, fields, selectedLead);
+    if (!selectedLead || !blueprint) return;
+
+    if (selectedSubstageTransition) {
+      const err = validateTransitionAutomation(selectedSubstageTransition, formDraft, fields, selectedLead);
+      if (err) {
+        setBanner(err);
+        window.setTimeout(() => setBanner(null), 4000);
+        return;
+      }
+      const executedAt = new Date();
+      const afterForm = applySubstageTransitionToLead(selectedLead, selectedSubstageTransition, blueprint, formDraft);
+      const scratchLeads = leads.map((l) => (l.id === afterForm.id ? afterForm : l));
+      const { lead: withAuto, extraLeads } = applyTransitionAutomation({
+        lead: afterForm,
+        transition: selectedSubstageTransition,
+        leadFields: fields,
+        formDraft,
+        executedAt,
+        newLeadUuid,
+        scratchLeads,
+        nextDisplayIdForLeads,
+        seedRelatedDemo: seedRelatedDemoForLead,
+      });
+      let list = upsertLead(leads, withAuto);
+      for (const el of extraLeads) {
+        list = upsertLead(list, el);
+      }
+      setLeads(list);
+      saveLeads(list);
+      setBanner("Sub-stage updated (saved in this browser).");
+      window.setTimeout(() => setBanner(null), 3200);
+      setSelectedSubstageTransition(null);
+      setFormDraft({});
+      setCreateRecordFillOpen(false);
+      return;
+    }
+
+    if (selectedSubstageExit && stageField) {
+      const err = validateTransitionAutomation(selectedSubstageExit, formDraft, fields, selectedLead);
+      if (err) {
+        setBanner(err);
+        window.setTimeout(() => setBanner(null), 4000);
+        return;
+      }
+      const executedAt = new Date();
+      const afterForm = applySubstageExitToLead(selectedLead, selectedSubstageExit, blueprint, stageField, formDraft);
+      const scratchLeads = leads.map((l) => (l.id === afterForm.id ? afterForm : l));
+      const { lead: withAuto, extraLeads } = applyTransitionAutomation({
+        lead: afterForm,
+        transition: selectedSubstageExit,
+        leadFields: fields,
+        formDraft,
+        executedAt,
+        newLeadUuid,
+        scratchLeads,
+        nextDisplayIdForLeads,
+        seedRelatedDemo: seedRelatedDemoForLead,
+      });
+      let list = upsertLead(leads, withAuto);
+      for (const el of extraLeads) {
+        list = upsertLead(list, el);
+      }
+      setLeads(list);
+      saveLeads(list);
+      const target = targetStateForExit(blueprint, selectedSubstageExit);
+      const targetHasSubstageFlow = hasSubstageFlow(target);
+      setBanner(
+        targetHasSubstageFlow
+          ? "Stage updated. Continue with sub-stage flow."
+          : "Stage updated (saved in this browser).",
+      );
+      window.setTimeout(() => setBanner(null), 3200);
+      setSelectedSubstageExit(null);
+      setSelectedSubstageTransition(null);
+      setSelectedTransition(null);
+      setSelectedEntrySubstageId("");
+      setFormDraft({});
+      setTab(targetHasSubstageFlow ? "change-stage" : "overview");
+      setCreateRecordFillOpen(false);
+      return;
+    }
+
+    if (!selectedTransition || !stageField) return;
+    const tgt = targetState(blueprint, selectedTransition);
+    if (entrySubstagesToPick.length > 0 && !selectedEntrySubstageId.trim()) {
+      setBanner("Select a sub-stage for this move.");
+      window.setTimeout(() => setBanner(null), 3200);
+      return;
+    }
+    const err = validateTransitionAutomation(selectedTransition, formDraft, fields, selectedLead);
     if (err) {
       setBanner(err);
       window.setTimeout(() => setBanner(null), 4000);
       return;
     }
     const executedAt = new Date();
-    const afterForm = applyTransitionToLead(selectedLead, selectedTransition, blueprint, stageField, formDraft);
+    const afterForm = applyTransitionToLead(
+      selectedLead,
+      selectedTransition,
+      blueprint,
+      stageField,
+      formDraft,
+      selectedEntrySubstageId,
+    );
     const scratchLeads = leads.map((l) => (l.id === afterForm.id ? afterForm : l));
     const { lead: withAuto, extraLeads } = applyTransitionAutomation({
       lead: afterForm,
@@ -412,20 +776,43 @@ export function ManageLeadsClient() {
     }
     setLeads(list);
     saveLeads(list);
-    setBanner("Stage updated (saved in this browser).");
+    const target = tgt ?? targetState(blueprint, selectedTransition);
+    const targetHasSubstageFlow = hasSubstageFlow(target);
+    setBanner(
+      targetHasSubstageFlow
+        ? "Stage updated. Continue with sub-stage flow."
+        : "Stage updated (saved in this browser).",
+    );
     window.setTimeout(() => setBanner(null), 3200);
     setSelectedTransition(null);
+    setSelectedSubstageTransition(null);
+    setSelectedEntrySubstageId("");
     setFormDraft({});
-    setTab("overview");
+    setTab(targetHasSubstageFlow ? "change-stage" : "overview");
     setCreateRecordFillOpen(false);
-  }, [selectedLead, selectedTransition, blueprint, stageField, formDraft, leads, fields]);
+  }, [
+    selectedLead,
+    selectedTransition,
+    selectedSubstageTransition,
+    selectedSubstageExit,
+    entrySubstagesToPick,
+    selectedEntrySubstageId,
+    blueprint,
+    stageField,
+    formDraft,
+    leads,
+    fields,
+  ]);
 
   const stageLabelForLead = useCallback(
     (lead: LeadRecord) => {
-      if (!stageField) return "—";
-      return formatLeadFieldValue(stageField, lead.values[stageField.apiKey]);
+      if (!stageField || !blueprint) return "—";
+      const stageLabel = formatLeadFieldValue(stageField, lead.values[stageField.apiKey]);
+      const st = stateFromStageValue(blueprint, stageField, lead.values[stageField.apiKey]);
+      const ss = currentSubstageForLead(blueprint, st, lead);
+      return formatStageAndSubstage(stageLabel, ss);
     },
-    [stageField],
+    [stageField, blueprint],
   );
 
   const warmthFieldDef = useMemo(() => warmthFieldFromSchema(fields), [fields]);
@@ -527,15 +914,22 @@ export function ManageLeadsClient() {
     router.push(`/developer/manage-leads?id=${encodeURIComponent(id)}`);
   }, [fields, leads, stageField, router]);
 
+  const onAddTestLeads = useCallback(() => {
+    const list = appendBlueprintTestLeads();
+    setLeads(list);
+    setBanner("Added 8 test leads for the active blueprint (stages + Site Visit sub-stages).");
+    window.setTimeout(() => setBanner(null), 4000);
+  }, [setBanner]);
+
   const onBulkUpload = useCallback(() => {
     setBanner("Bulk upload is not wired in this prototype.");
     window.setTimeout(() => setBanner(null), 3200);
   }, []);
 
   const canSaveTransition = useMemo(() => {
-    if (!selectedTransition || !selectedLead) return false;
-    return validateTransition(selectedTransition, formDraft, fields, selectedLead) === null;
-  }, [selectedTransition, formDraft, fields, selectedLead]);
+    if (!selectedLead || !activeAutomation) return false;
+    return validateTransitionAutomation(activeAutomation, formDraft, fields, selectedLead) === null;
+  }, [activeAutomation, formDraft, fields, selectedLead]);
 
   const borderCell = "border-b border-border-soft";
   const headText = "text-[10px] font-semibold uppercase tracking-wider text-muted";
@@ -577,6 +971,14 @@ export function ManageLeadsClient() {
                 <path strokeLinecap="round" d="M12 5v14M5 12h14" />
               </svg>
               Add lead
+            </button>
+            <button
+              type="button"
+              onClick={onAddTestLeads}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 text-xs font-semibold text-violet-900 shadow-sm transition hover:bg-violet-100"
+              title="Adds sample leads across stages and Site Visit sub-stages for the active blueprint"
+            >
+              Add test leads
             </button>
             <button
               type="button"
@@ -1166,53 +1568,194 @@ export function ManageLeadsClient() {
                       <div className="rounded-b-2xl rounded-tr-2xl bg-[#fafafa] p-6">
                         <h3 className="mb-4 text-sm font-medium text-[#1f1750]">Status</h3>
                         <p className="mb-3 text-xs text-[#7e7a95]">
-                          From <strong className="text-[#1f1750]">{currentState?.label ?? "—"}</strong> only blueprint
-                          transitions listed below are allowed.
+                          {selectedTransition ? (
+                            <>
+                              Moving to{" "}
+                              <strong className="text-[#1f1750]">
+                                {blueprint ? transitionTargetDisplayLabel(blueprint, selectedTransition) : "—"}
+                              </strong>
+                              . Complete the form below
+                              {entrySubstagesToPick.length > 0 ? " and choose a sub-stage." : "."}
+                            </>
+                          ) : (
+                            <>
+                              From{" "}
+                              <strong className="text-[#1f1750]">
+                                {formatStageAndSubstage(currentState?.label ?? "—", currentSubstage)}
+                              </strong>
+                              . Change sub-stage within this stage, or pick a main-stage transition below.
+                            </>
+                          )}
                         </p>
-                        {allowed.length === 0 ? (
-                          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-                            No outgoing transitions from this stage. Add edges in the blueprint configurator.
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-3">
-                            {allowed.map((tr) => {
-                              const tgt = targetState(blueprint, tr);
-                              const label = tgt?.label ?? tr.name;
-                              const active = selectedTransition?.id === tr.id;
-                              const dot = stageTargetDotColor(label);
-                              return (
-                                <button
-                                  key={tr.id}
-                                  type="button"
-                                  onClick={() => selectedLead && pickTransition(tr, selectedLead)}
-                                  className="flex cursor-pointer items-center rounded-full border-[1.5px] px-5 py-2"
-                                  style={{
-                                    borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
-                                  }}
-                                >
-                                  <span className="mr-2 size-4 shrink-0 rounded-full" style={{ backgroundColor: dot }} aria-hidden />
-                                  <span className="text-sm text-[#1f1750]">{label}</span>
-                                </button>
-                              );
-                            })}
+                        {entrySubstagesToPick.length > 0 ? (
+                          <div className="mb-6">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7e7a95]">
+                              Sub-stage for this move
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {entrySubstagesToPick.map((ss) => {
+                                const active = selectedEntrySubstageId === ss.id;
+                                return (
+                                  <button
+                                    key={ss.id}
+                                    type="button"
+                                    onClick={() => setSelectedEntrySubstageId(ss.id)}
+                                    className="rounded-full border-[1.5px] px-4 py-1.5 text-sm text-[#1f1750] transition"
+                                    style={{
+                                      borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
+                                      backgroundColor: active ? "rgba(52, 54, 156, 0.08)" : "rgb(250, 250, 250)",
+                                    }}
+                                  >
+                                    {ss.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
+                        ) : null}
+                        {!selectedTransition && currentSubstages.length > 0 ? (
+                          <div className="mb-6">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7e7a95]">
+                              Sub-stage
+                            </h4>
+                            {substageFlowActive ? (
+                              !flowSubstageId ? (
+                                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                                  No sub-stage is set on this lead. Move here using a main-stage entry arrow into a
+                                  sub-stage (e.g. Qualified → Site Visit · Scheduled).
+                                </p>
+                              ) : allowedSubstage.length === 0 && allowedExits.length === 0 ? (
+                                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                                  No outgoing sub-stage flows from{" "}
+                                  <strong>{currentSubstage?.label ?? "this sub-stage"}</strong>. Connect sub-stages or
+                                  exits in the blueprint.
+                                </p>
+                              ) : (
+                                <>
+                                  {currentSubstage ? (
+                                    <p className="mb-2 text-[11px] text-[#7e7a95]">
+                                      Current: <strong className="text-[#1f1750]">{currentSubstage.label}</strong>
+                                    </p>
+                                  ) : null}
+                                  {allowedSubstage.length > 0 ? (
+                                    <div className="flex flex-wrap gap-3">
+                                      {allowedSubstage.map((tr) => {
+                                        const tgt = targetSubstage(substageContextState, tr);
+                                        const label = tgt?.label ?? tr.name;
+                                        const active = selectedSubstageTransition?.id === tr.id;
+                                        return (
+                                          <button
+                                            key={tr.id}
+                                            type="button"
+                                            onClick={() => selectedLead && pickSubstageTransition(tr, selectedLead)}
+                                            className="flex cursor-pointer items-center rounded-full border-[1.5px] px-5 py-2"
+                                            style={{
+                                              borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
+                                              backgroundColor: active
+                                                ? "rgba(52, 54, 156, 0.06)"
+                                                : "rgb(250, 250, 250)",
+                                            }}
+                                          >
+                                            <span className="text-sm text-[#1f1750]">{label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : null}
+                                </>
+                              )
+                            ) : (
+                              <p className="rounded-lg border border-dashed border-border-soft bg-white px-3 py-2 text-xs text-muted">
+                                Draw sub-stage arrows or entry arrows in the blueprint to control paths here.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
+                        {allowMainStageSelection ? (
+                          <>
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7e7a95]">
+                              Main stage
+                            </h4>
+                            {useSubstageExitTransitions ? (
+                              allowedExits.length === 0 ? (
+                                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                                  No exit arrows from this sub-stage. Draw from the sub-stage to the next main stage in
+                                  the blueprint.
+                                </p>
+                              ) : (
+                                <div className="flex flex-wrap gap-3">
+                                  {allowedExits.map((ex) => {
+                                    const tgt = targetStateForExit(blueprint, ex);
+                                    const label = tgt?.label ?? ex.name;
+                                    const active = pickedSubstageExitId === ex.id;
+                                    const dot = stageTargetDotColor(label);
+                                    return (
+                                      <button
+                                        key={ex.id}
+                                        type="button"
+                                        onClick={() => selectedLead && pickSubstageExit(ex, selectedLead)}
+                                        className="flex cursor-pointer items-center rounded-full border-[1.5px] px-5 py-2"
+                                        style={{
+                                          borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
+                                        }}
+                                      >
+                                        <span className="mr-2 size-4 shrink-0 rounded-full" style={{ backgroundColor: dot }} aria-hidden />
+                                        <span className="text-sm text-[#1f1750]">{label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )
+                            ) : allowed.length === 0 ? (
+                              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                                No outgoing transitions from this stage. Add edges in the blueprint configurator.
+                              </p>
+                            ) : (
+                              <div className="flex flex-wrap gap-3">
+                                {allowed.map((tr) => {
+                                  const label = transitionTargetDisplayLabel(blueprint, tr);
+                                  const active = pickedMainTransitionId === tr.id;
+                                  const dot = stageTargetDotColor(label);
+                                  return (
+                                    <button
+                                      key={tr.id}
+                                      type="button"
+                                      onClick={() => selectedLead && pickTransition(tr, selectedLead)}
+                                      className="flex cursor-pointer items-center rounded-full border-[1.5px] px-5 py-2"
+                                      style={{
+                                        borderColor: active ? "rgb(52, 54, 156)" : "rgb(193, 192, 203)",
+                                      }}
+                                    >
+                                      <span className="mr-2 size-4 shrink-0 rounded-full" style={{ backgroundColor: dot }} aria-hidden />
+                                      <span className="text-sm text-[#1f1750]">{label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="mb-2 text-xs text-[#7e7a95]">
+                            Complete the connected sub-stage flow first. Main-stage transitions unlock when no further
+                            sub-stage transition is available.
+                          </p>
                         )}
 
-                        {selectedTransition ? (
+                        {activeAutomation ? (
                           <div className="mt-6 space-y-6">
-                            {selectedTransition.form.message ? (
-                              <p className="text-sm text-[#7e7a95]">{selectedTransition.form.message}</p>
+                            {activeAutomation.form.message ? (
+                              <p className="text-sm text-[#7e7a95]">{activeAutomation.form.message}</p>
                             ) : null}
 
-                            {selectedTransition.form.fields.map((f) => (
+                            {activeAutomation.form.fields.map((f) => (
                               <TransitionFieldInput
                                 key={f.id}
                                 variant="drawer"
                                 field={f}
                                 definitions={fields}
-                                value={formDraft[transitionFormDraftKey(selectedTransition, f)] ?? ""}
+                                value={formDraft[transitionFormDraftKey(activeAutomation, f)] ?? ""}
                                 onChange={(v) =>
-                                  setFormDraft((d) => ({ ...d, [transitionFormDraftKey(selectedTransition, f)]: v }))
+                                  setFormDraft((d) => ({ ...d, [transitionFormDraftKey(activeAutomation, f)]: v }))
                                 }
                               />
                             ))}
@@ -1230,25 +1773,25 @@ export function ManageLeadsClient() {
                               </div>
                             ) : null}
 
-                            {selectedTransition.form.includeRemark ? (
+                            {activeAutomation.form.includeRemark ? (
                               <div className="mb-2">
                                 <label
                                   className="mb-2 block text-sm font-medium text-[#1f1750]"
-                                  htmlFor={`rm-${selectedTransition.id}`}
+                                  htmlFor={`rm-${activeAutomation.id}`}
                                 >
                                   Notes
-                                  {selectedTransition.form.remarkMandatory ? (
+                                  {activeAutomation.form.remarkMandatory ? (
                                     <span className="text-[#ff6678]"> *</span>
                                   ) : null}
                                 </label>
                                 <div className="relative rounded-lg pb-5" style={{ backgroundColor: "rgb(239, 239, 241)" }}>
                                   <textarea
-                                    id={`rm-${selectedTransition.id}`}
+                                    id={`rm-${activeAutomation.id}`}
                                     rows={4}
                                     maxLength={5000}
-                                    value={formDraft[`${selectedTransition.id}:__remark__`] ?? ""}
+                                    value={formDraft[`${activeAutomation.id}:__remark__`] ?? ""}
                                     onChange={(e) =>
-                                      setFormDraft((d) => ({ ...d, [`${selectedTransition.id}:__remark__`]: e.target.value }))
+                                      setFormDraft((d) => ({ ...d, [`${activeAutomation.id}:__remark__`]: e.target.value }))
                                     }
                                     className="w-full resize-none rounded-lg border-none bg-transparent p-4 text-sm text-[#1f1750] outline-none"
                                     style={{ backgroundColor: "rgb(239, 239, 241)" }}
@@ -1259,29 +1802,29 @@ export function ManageLeadsClient() {
                               </div>
                             ) : null}
 
-                            {selectedTransition.form.includeTasks ? (
+                            {activeAutomation.form.includeTasks ? (
                               <div className="space-y-2">
                                 <div className="mb-2 text-sm font-medium text-[#1f1750]">
-                                  {transitionTaskScheduleHeading(selectedTransition.form.taskPresetType)}
-                                  {selectedTransition.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
+                                  {transitionTaskScheduleHeading(activeAutomation.form.taskPresetType)}
+                                  {activeAutomation.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
                                 </div>
                                 <div className="flex flex-wrap gap-4">
                                   <div className="w-full min-w-[10rem] sm:w-[35%]">
                                     <label
                                       className="mb-2 ml-5 block text-sm text-[#7e7a95]"
-                                      htmlFor={`td-${selectedTransition.id}`}
+                                      htmlFor={`td-${activeAutomation.id}`}
                                     >
                                       Date
-                                      {selectedTransition.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
+                                      {activeAutomation.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
                                     </label>
                                     <input
-                                      id={`td-${selectedTransition.id}`}
+                                      id={`td-${activeAutomation.id}`}
                                       type="date"
-                                      value={formDraft[`${selectedTransition.id}:__task_date__`] ?? ""}
+                                      value={formDraft[`${activeAutomation.id}:__task_date__`] ?? ""}
                                       onChange={(e) =>
                                         setFormDraft((d) => ({
                                           ...d,
-                                          [`${selectedTransition.id}:__task_date__`]: e.target.value,
+                                          [`${activeAutomation.id}:__task_date__`]: e.target.value,
                                         }))
                                       }
                                       className="flex w-full cursor-pointer items-center justify-between rounded-full border-0 px-5 py-2.5 text-base font-semibold text-[#1f1750] outline-none"
@@ -1291,19 +1834,19 @@ export function ManageLeadsClient() {
                                   <div className="w-full min-w-[10rem] sm:w-[35%]">
                                     <label
                                       className="mb-2 ml-5 block text-sm text-[#7e7a95]"
-                                      htmlFor={`tt-${selectedTransition.id}`}
+                                      htmlFor={`tt-${activeAutomation.id}`}
                                     >
                                       Time
-                                      {selectedTransition.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
+                                      {activeAutomation.form.taskMandatory ? <span className="text-[#ff6678]"> *</span> : null}
                                     </label>
                                     <input
-                                      id={`tt-${selectedTransition.id}`}
+                                      id={`tt-${activeAutomation.id}`}
                                       type="time"
-                                      value={formDraft[`${selectedTransition.id}:__task_time__`] ?? ""}
+                                      value={formDraft[`${activeAutomation.id}:__task_time__`] ?? ""}
                                       onChange={(e) =>
                                         setFormDraft((d) => ({
                                           ...d,
-                                          [`${selectedTransition.id}:__task_time__`]: e.target.value,
+                                          [`${activeAutomation.id}:__task_time__`]: e.target.value,
                                         }))
                                       }
                                       className="flex w-full cursor-pointer items-center justify-between rounded-full border-0 px-5 py-2.5 text-base font-semibold text-[#1f1750] outline-none"
@@ -1314,12 +1857,51 @@ export function ManageLeadsClient() {
                               </div>
                             ) : null}
 
+                            {(activeAutomation.form.tools ?? []).length > 0 ? (
+                              <div className="space-y-3">
+                                <div className="text-sm font-medium text-[#1f1750]">Tools</div>
+                                <ul className="space-y-2">
+                                  {(activeAutomation.form.tools ?? []).map((tool) => {
+                                    const toolKey = transitionToolDraftKey(activeAutomation.id, tool.id);
+                                    const done = (formDraft[toolKey] ?? "") === "1";
+                                    return (
+                                      <li
+                                        key={tool.id}
+                                        className="flex items-center justify-between gap-3 rounded-full px-5 py-2.5"
+                                        style={{ backgroundColor: "rgb(228, 229, 230)" }}
+                                      >
+                                        <span className="text-sm font-semibold text-[#1f1750]">
+                                          {tool.label}
+                                          {tool.mandatory ? <span className="text-[#ff6678]"> *</span> : null}
+                                        </span>
+                                        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-[#7e7a95]">
+                                          <input
+                                            type="checkbox"
+                                            checked={done}
+                                            onChange={(e) =>
+                                              setFormDraft((d) => ({
+                                                ...d,
+                                                [toolKey]: e.target.checked ? "1" : "",
+                                              }))
+                                            }
+                                            className="size-4 rounded border-border-soft text-accent"
+                                          />
+                                          Done
+                                        </label>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            ) : null}
+
                             <div className="mt-8 flex gap-4">
                               <button
                                 type="button"
                                 onClick={() => {
                                   setCreateRecordFillOpen(false);
                                   setSelectedTransition(null);
+                                  setSelectedSubstageTransition(null);
                                 }}
                                 className="flex flex-1 cursor-pointer items-center justify-center rounded-full border py-3 text-sm font-semibold text-accent"
                                 style={{ borderColor: "rgb(52, 54, 156)", backgroundColor: "rgb(250, 250, 250)" }}
@@ -1356,7 +1938,7 @@ export function ManageLeadsClient() {
                 </div>
               </div>
             </div>
-            {createRecordFillOpen && selectedLead && selectedTransition && createRecordRepNeeds.length > 0 ? (
+            {createRecordFillOpen && selectedLead && activeAutomation && createRecordRepNeeds.length > 0 ? (
               <div
                 className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center p-4"
                 style={{ backgroundColor: "rgba(31, 23, 80, 0.35)" }}
@@ -1391,7 +1973,7 @@ export function ManageLeadsClient() {
                           value={
                             formDraft[
                               transitionCreateRecordDraftKey(
-                                selectedTransition.id,
+                                activeAutomation.id,
                                 need.createRecordId,
                                 need.targetFieldApiKey,
                               )
@@ -1401,7 +1983,7 @@ export function ManageLeadsClient() {
                             setFormDraft((d) => ({
                               ...d,
                               [transitionCreateRecordDraftKey(
-                                selectedTransition.id,
+                                activeAutomation.id,
                                 need.createRecordId,
                                 need.targetFieldApiKey,
                               )]: e.target.value,

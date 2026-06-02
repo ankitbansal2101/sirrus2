@@ -11,6 +11,7 @@ import {
   type Connection,
   type Edge,
   type Node as FlowNode,
+  Position,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -18,26 +19,54 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AvailableStagesDragList, readBlueprintDrag } from "@/components/blueprint-configurator/blueprint-palette";
+import { readBlueprintDrag } from "@/components/blueprint-configurator/blueprint-palette";
+import { StageFieldOptionsPanel } from "@/components/blueprint-configurator/stage-field-options-panel";
 import { useBlueprintWorkspace } from "@/components/blueprint-configurator/blueprint-workspace-context";
+import { StageInspector } from "@/components/blueprint-configurator/stage-inspector";
+import { BlueprintLabeledEdge } from "@/components/blueprint-configurator/blueprint-labeled-edge";
 import { StageNode } from "@/components/blueprint-configurator/stage-node";
+import { SubstageGroupNode } from "@/components/blueprint-configurator/substage-group-node";
+import { SubstageNode } from "@/components/blueprint-configurator/substage-node";
 import { TransitionInspector } from "@/components/blueprint-configurator/transition-inspector";
 import {
+  applyCanvasEdgeChrome,
+  BLUEPRINT_LABELED_EDGE_TYPE,
   blueprintToFlow,
+  computeSubstageGroupBox,
+  resolveSubstageGroupSize,
+  DEFAULT_STAGE_NODE_SIZE,
+  DEFAULT_SUBSTAGE_NODE_SIZE,
   flowToBlueprint,
+  parseSubstageGroupId,
+  parseSubstageNodeId,
+  SUBSTAGE_GROUP_NODE_TYPE,
+  SUBSTAGE_NODE_TYPE,
   STAGE_NODE_TYPE,
+  substageGroupId,
+  substageNodeId,
+  type CanvasEdgeData,
+  type CanvasEdgeKind,
   type StageNodeData,
-  type TransitionEdgeData,
+  type SubstageGroupNodeData,
+  type SubstageNodeData,
 } from "@/lib/blueprint/flow-bridge";
 import {
   FIELDS_SCHEMA_CHANGED_EVENT,
   FIELDS_SCHEMA_STORAGE_KEY,
   fieldsToLeadFieldOptions,
-  fieldsToStagePaletteLabels,
   listFieldsWithOptionChoices,
   resolveFieldDefinitions,
   resolveStageField,
 } from "@/lib/blueprint/from-fields-schema";
+import {
+  addStagePicklistOption,
+  patchStageFieldOptions,
+  pruneBlueprintGraphForStageLabel,
+  canvasLabelForPicklistOption,
+  renameStageLabelOnCanvas,
+  removeStagePicklistOption,
+  updateStagePicklistOptionLabel,
+} from "@/lib/blueprint/stage-field-sync";
 import {
   BLUEPRINT_CHANGED_EVENT,
   loadBlueprintById,
@@ -45,26 +74,27 @@ import {
 } from "@/lib/blueprint/storage";
 import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import {
+  createDefaultSubstageExit,
+  createDefaultSubstageTransition,
   createDefaultTransition,
   newEntityId,
   type BlueprintDocument,
+  type BlueprintSubstage,
   type BlueprintTransition,
+  type TransitionAutomation,
 } from "@/lib/blueprint/types";
+import { saveFieldsSchema } from "@/lib/fields-config/schema-storage";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 
-const nodeTypes = { [STAGE_NODE_TYPE]: StageNode };
+const nodeTypes = {
+  [STAGE_NODE_TYPE]: StageNode,
+  [SUBSTAGE_NODE_TYPE]: SubstageNode,
+  [SUBSTAGE_GROUP_NODE_TYPE]: SubstageGroupNode,
+};
 
-function applyEdgeChrome(eds: Edge<TransitionEdgeData>[], selectedId: string | null): Edge<TransitionEdgeData>[] {
-  return eds.map((e) => ({
-    ...e,
-    selected: e.id === selectedId,
-    style: {
-      ...e.style,
-      stroke: e.id === selectedId ? "#2563eb" : "#374151",
-      strokeWidth: e.id === selectedId ? 2.5 : 1.5,
-    },
-  }));
-}
+const edgeTypes = {
+  [BLUEPRINT_LABELED_EDGE_TYPE]: BlueprintLabeledEdge,
+};
 
 type PanelTab = "info" | "transition";
 
@@ -75,19 +105,25 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     () => loadBlueprintById(blueprintId) ?? defaultBlueprintDocument(),
     [blueprintId],
   );
-  const [docMeta, setDocMeta] = useState<Pick<BlueprintDocument, "id" | "name" | "module" | "stageField">>(() => ({
+  const [docMeta, setDocMeta] = useState<
+    Pick<BlueprintDocument, "id" | "name" | "module" | "stageField" | "substageField">
+  >(() => ({
     id: initialDoc.id,
     name: initialDoc.name,
     module: initialDoc.module,
     stageField: initialDoc.stageField,
+    substageField: initialDoc.substageField,
   }));
   const initialFlow = useMemo(() => {
     const { nodes, edges } = blueprintToFlow(initialDoc);
-    return { nodes, edges: applyEdgeChrome(edges, null) };
+    return { nodes, edges: applyCanvasEdgeChrome(edges, null) };
   }, [initialDoc]);
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<StageNodeData>>(initialFlow.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<TransitionEdgeData>>(initialFlow.edges);
+  const [nodes, setNodes, onNodesChange] = useNodesState<
+    FlowNode<StageNodeData | SubstageNodeData | SubstageGroupNodeData>
+  >(initialFlow.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<CanvasEdgeData>>(initialFlow.edges);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab>("info");
   const [dropHighlight, setDropHighlight] = useState(false);
   const draggingPaletteRef = useRef(false);
@@ -95,10 +131,6 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
 
   const [fieldRows, setFieldRows] = useState<FieldDefinition[]>(() => resolveFieldDefinitions());
   const leadFieldOptions = useMemo(() => fieldsToLeadFieldOptions(fieldRows), [fieldRows]);
-  const stagePaletteLabels = useMemo(
-    () => fieldsToStagePaletteLabels(fieldRows, docMeta.stageField),
-    [fieldRows, docMeta.stageField],
-  );
   const picklistDrivers = useMemo(() => listFieldsWithOptionChoices(fieldRows), [fieldRows]);
   const stagePickSource = useMemo(
     () => resolveStageField(fieldRows, docMeta.stageField),
@@ -135,9 +167,10 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
       name: loaded.name,
       module: loaded.module,
       stageField: loaded.stageField,
+      substageField: loaded.substageField,
     });
     setNodes(n);
-    setEdges(applyEdgeChrome(e, null));
+    setEdges(applyCanvasEdgeChrome(e, null));
   }, [blueprintId, setEdges, setNodes]);
 
   useEffect(() => {
@@ -151,11 +184,90 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   }, [reloadBlueprintFromStorage]);
 
   const labelByNodeId = useCallback(
-    (id: string) => nodes.find((n) => n.id === id)?.data?.label ?? "",
+    (id: string) => {
+      const n = nodes.find((node) => node.id === id);
+      if (!n?.data) return "";
+      if ("label" in n.data && typeof n.data.label === "string") return n.data.label;
+      if ("stageLabel" in n.data && typeof n.data.stageLabel === "string") return n.data.stageLabel;
+      return "";
+    },
     [nodes],
   );
 
   /** So Backspace/Delete reach React Flow: it skips keys while focus is in inputs (`actInsideInputWithModifier: false`). */
+  const persistFieldRows = useCallback(
+    (next: FieldDefinition[]) => {
+      if (!saveFieldsSchema(next)) {
+        setSaveBanner("Could not save stage field");
+        window.setTimeout(() => setSaveBanner(null), 3200);
+        return false;
+      }
+      setFieldRows(next);
+      return true;
+    },
+    [setSaveBanner],
+  );
+
+  const handleAddStageOption = useCallback(
+    (label: string) => {
+      const next = patchStageFieldOptions(fieldRows, docMeta.stageField, (f) => addStagePicklistOption(f, label));
+      if (!next || !persistFieldRows(next)) return;
+      setSaveBanner("Stage added — drag it onto the canvas");
+      window.setTimeout(() => setSaveBanner(null), 2800);
+    },
+    [fieldRows, docMeta.stageField, persistFieldRows, setSaveBanner],
+  );
+
+  const handleRemoveStageOption = useCallback(
+    (optionId: string, label: string) => {
+      const sf = resolveStageField(fieldRows, docMeta.stageField);
+      if (!sf) return;
+      const updatedField = removeStagePicklistOption(sf, optionId);
+      if (!updatedField) {
+        setSaveBanner("Keep at least one stage on the field");
+        window.setTimeout(() => setSaveBanner(null), 2800);
+        return;
+      }
+      const nextFields = fieldRows.map((f) => (f.id === sf.id ? updatedField : f));
+      const pruned = pruneBlueprintGraphForStageLabel(nodes, edges, label);
+      setNodes(pruned.nodes);
+      setEdges(applyCanvasEdgeChrome(pruned.edges, selectedEdgeId));
+      if (selectedNodeId) {
+        const sn = pruned.nodes.find((n) => n.id === selectedNodeId);
+        if (!sn) setSelectedNodeId(null);
+      }
+      if (!persistFieldRows(nextFields)) return;
+      setSaveBanner("Stage removed from field and canvas");
+      window.setTimeout(() => setSaveBanner(null), 2800);
+    },
+    [fieldRows, docMeta.stageField, nodes, edges, selectedEdgeId, selectedNodeId, persistFieldRows, setNodes, setEdges, setSaveBanner],
+  );
+
+  const handleRenameStageOption = useCallback(
+    (optionId: string, label: string) => {
+      let previousLabel = "";
+      const nextFields = patchStageFieldOptions(fieldRows, docMeta.stageField, (f) => {
+        const updated = updateStagePicklistOptionLabel(f, optionId, label);
+        if (!updated) return f;
+        previousLabel = updated.previousLabel;
+        return updated.field;
+      });
+      if (!nextFields) return;
+      const trimmed = label.trim();
+      if (trimmed) {
+        const sf = resolveStageField(nextFields, docMeta.stageField);
+        const opt = sf?.options.find((o) => o.id === optionId);
+        const canvasOld =
+          previousLabel.trim() || (opt ? canvasLabelForPicklistOption(nodes, opt) : null) || previousLabel;
+        if (canvasOld.trim()) {
+          setNodes((nds) => renameStageLabelOnCanvas(nds, canvasOld, trimmed));
+        }
+      }
+      persistFieldRows(nextFields);
+    },
+    [fieldRows, docMeta.stageField, nodes, persistFieldRows, setNodes],
+  );
+
   const blurBlockingFocus = useCallback(() => {
     const el = document.activeElement;
     if (!el || !(el instanceof HTMLElement)) return;
@@ -167,28 +279,129 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   const onConnect = useCallback(
     (params: Connection) => {
       if (!params.source || !params.target) return;
+      if (parseSubstageGroupId(params.source) || parseSubstageGroupId(params.target)) return;
       blurBlockingFocus();
-      const tr = createDefaultTransition(
-        params.source,
-        params.target,
-        labelByNodeId(params.source),
-        labelByNodeId(params.target),
-      );
-      setEdges((eds) => {
-        const next = addEdge(
-          {
-            ...params,
-            id: tr.id,
-            label: tr.name,
-            animated: true,
-            data: { transition: tr },
-          },
-          eds,
-        ) as Edge<TransitionEdgeData>[];
-        return applyEdgeChrome(next, tr.id);
-      });
-      setSelectedEdgeId(tr.id);
-      setPanelTab("transition");
+
+      const srcSs = parseSubstageNodeId(params.source);
+      const tgtSs = parseSubstageNodeId(params.target);
+
+      if (!srcSs && tgtSs) {
+        const parentLabel = labelByNodeId(tgtSs.parentStateId);
+        const ssLabel = labelByNodeId(params.target);
+        const tr: BlueprintTransition = {
+          ...createDefaultTransition(
+            params.source,
+            tgtSs.parentStateId,
+            labelByNodeId(params.source),
+            parentLabel,
+          ),
+          targetSubstageId: tgtSs.substageId,
+          name: `${parentLabel} · ${ssLabel}`,
+        };
+        setEdges((eds) => {
+          const next = addEdge(
+            {
+              ...params,
+              id: tr.id,
+              animated: true,
+              data: { kind: "stage", transition: tr },
+            },
+            eds,
+          ) as Edge<CanvasEdgeData>[];
+          return applyCanvasEdgeChrome(next, tr.id);
+        });
+        setSelectedNodeId(null);
+        setSelectedEdgeId(tr.id);
+        setPanelTab("transition");
+        return;
+      }
+
+      const edgeKind: CanvasEdgeKind =
+        srcSs && tgtSs && srcSs.parentStateId === tgtSs.parentStateId
+          ? "substage"
+          : srcSs && !tgtSs
+            ? "substage_exit"
+            : "stage";
+
+      if (edgeKind === "stage") {
+        if (srcSs || tgtSs) return;
+        const tr = createDefaultTransition(
+          params.source,
+          params.target,
+          labelByNodeId(params.source),
+          labelByNodeId(params.target),
+        );
+        setEdges((eds) => {
+          const next = addEdge(
+            {
+              ...params,
+              id: tr.id,
+              animated: true,
+              data: { kind: "stage", transition: tr },
+            },
+            eds,
+          ) as Edge<CanvasEdgeData>[];
+          return applyCanvasEdgeChrome(next, tr.id);
+        });
+        setSelectedNodeId(null);
+        setSelectedEdgeId(tr.id);
+        setPanelTab("transition");
+        return;
+      }
+
+      if (edgeKind === "substage") {
+        if (!srcSs || !tgtSs) return;
+        const parentStateId = srcSs.parentStateId;
+        const tr = createDefaultSubstageTransition(
+          srcSs.substageId,
+          tgtSs.substageId,
+          labelByNodeId(params.source),
+          labelByNodeId(params.target),
+        );
+        setEdges((eds) => {
+          const next = addEdge(
+            {
+              ...params,
+              id: tr.id,
+              animated: true,
+              data: { kind: "substage", parentStateId, substageTransition: tr },
+            },
+            eds,
+          ) as Edge<CanvasEdgeData>[];
+          return applyCanvasEdgeChrome(next, tr.id);
+        });
+        setSelectedNodeId(null);
+        setSelectedEdgeId(tr.id);
+        setPanelTab("transition");
+        return;
+      }
+
+      if (edgeKind === "substage_exit") {
+        if (!srcSs || tgtSs) return;
+        if (params.target === srcSs.parentStateId) return;
+        const parentStateId = srcSs.parentStateId;
+        const ex = createDefaultSubstageExit(
+          srcSs.substageId,
+          params.target,
+          labelByNodeId(params.source),
+          labelByNodeId(params.target),
+        );
+        setEdges((eds) => {
+          const next = addEdge(
+            {
+              ...params,
+              id: ex.id,
+              animated: true,
+              data: { kind: "substage_exit", parentStateId, substageExit: ex },
+            },
+            eds,
+          ) as Edge<CanvasEdgeData>[];
+          return applyCanvasEdgeChrome(next, ex.id);
+        });
+        setSelectedNodeId(null);
+        setSelectedEdgeId(ex.id);
+        setPanelTab("transition");
+      }
     },
     [blurBlockingFocus, labelByNodeId, setEdges],
   );
@@ -198,20 +411,51 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     [edges, selectedEdgeId],
   );
 
-  const selectedTransition = selectedEdge?.data?.transition ?? null;
+  const selectedTransition: TransitionAutomation | null =
+    selectedEdge?.data?.transition ??
+    selectedEdge?.data?.substageTransition ??
+    selectedEdge?.data?.substageExit ??
+    null;
 
   const updateSelectedTransition = useCallback(
-    (next: BlueprintTransition) => {
-      if (!selectedEdgeId) return;
+    (next: TransitionAutomation) => {
+      if (!selectedEdgeId || !selectedTransition || !selectedEdge) return;
+      const kind = selectedEdge.data?.kind ?? "stage";
       setEdges((eds) =>
         eds.map((e) =>
           e.id === selectedEdgeId
-            ? { ...e, label: next.name, data: { transition: next } }
+            ? kind === "stage"
+              ? {
+                  ...e,
+                  label: undefined,
+                  data: { ...(e.data ?? {}), kind: "stage", transition: { ...(e.data?.transition as BlueprintTransition), ...next } },
+                }
+              : kind === "substage"
+                ? {
+                    ...e,
+                    label: undefined,
+                    data: {
+                      ...(e.data ?? {}),
+                      kind: "substage",
+                      substageTransition: { ...(e.data?.substageTransition as any), ...next },
+                    },
+                  }
+                : kind === "substage_exit"
+                  ? {
+                      ...e,
+                      label: undefined,
+                      data: {
+                        ...(e.data ?? {}),
+                        kind: "substage_exit",
+                        substageExit: { ...(e.data?.substageExit as any), ...next },
+                      },
+                    }
+                  : e
             : e,
         ),
       );
     },
-    [selectedEdgeId, setEdges],
+    [selectedEdgeId, selectedTransition, selectedEdge, setEdges],
   );
 
   const deleteSelectedTransition = useCallback(() => {
@@ -260,14 +504,20 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
       id,
       type: STAGE_NODE_TYPE,
       position,
-      data: { label: payload.label },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      style: DEFAULT_STAGE_NODE_SIZE,
+      data: { label: payload.label, substages: [], defaultSubstageId: "", substageTransitions: [], substageExits: [] },
     };
     blurBlockingFocus();
+    setSelectedNodeId(id);
+    setSelectedEdgeId(null);
+    setPanelTab("info");
     setNodes((nds) => [...nds, n]);
   };
 
   useEffect(() => {
-    setEdges((eds) => applyEdgeChrome(eds, selectedEdgeId));
+    setEdges((eds) => applyCanvasEdgeChrome(eds, selectedEdgeId));
   }, [selectedEdgeId, setEdges]);
 
   useEffect(() => {
@@ -276,11 +526,199 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     }
   }, [edges, selectedEdgeId]);
 
+  useEffect(() => {
+    if (selectedNodeId && !nodes.some((n) => n.id === selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+  }, [nodes, selectedNodeId]);
+
+  const selectedNode = useMemo(() => nodes.find((n) => n.id === selectedNodeId) ?? null, [nodes, selectedNodeId]);
+  const selectedStageNode = useMemo(() => {
+    if (!selectedNodeId) return null;
+    const direct = nodes.find((n) => n.id === selectedNodeId && n.type === STAGE_NODE_TYPE);
+    if (direct) return direct as FlowNode<StageNodeData>;
+    const group = parseSubstageGroupId(selectedNodeId);
+    if (group) {
+      const parent = nodes.find((n) => n.id === group.parentStateId && n.type === STAGE_NODE_TYPE);
+      return (parent as FlowNode<StageNodeData> | undefined) ?? null;
+    }
+    const ss = parseSubstageNodeId(selectedNodeId);
+    if (ss) {
+      const parent = nodes.find((n) => n.id === ss.parentStateId && n.type === STAGE_NODE_TYPE);
+      return (parent as FlowNode<StageNodeData> | undefined) ?? null;
+    }
+    return null;
+  }, [nodes, selectedNodeId]);
+
+  const syncSubstageNodesForStage = useCallback(
+    (
+      nds: FlowNode<StageNodeData | SubstageNodeData | SubstageGroupNodeData>[],
+      stageId: string,
+      substages: BlueprintSubstage[],
+      stageLabel: string,
+      parentPosition: { x: number; y: number },
+    ) => {
+      const groupId = substageGroupId(stageId);
+      const keep = new Set(substages.map((ss) => substageNodeId(stageId, ss.id)));
+
+      let next = nds.filter((n) => {
+        if (n.id === groupId) return substages.length > 0;
+        const parsed = parseSubstageNodeId(n.id);
+        if (parsed?.parentStateId === stageId) return keep.has(n.id);
+        return true;
+      });
+
+      if (substages.length === 0) return next;
+
+      const box = computeSubstageGroupBox(substages.length);
+      const existingGroup = next.find((n) => n.id === groupId);
+      const groupPos = existingGroup?.position ?? {
+        x: parentPosition.x - box.width - 42,
+        y: parentPosition.y + 18,
+      };
+
+      const prevSize =
+        existingGroup?.style?.width != null && existingGroup?.style?.height != null
+          ? {
+              width: Number(existingGroup.style.width) || box.width,
+              height: Number(existingGroup.style.height) || box.height,
+            }
+          : undefined;
+      const groupSize = resolveSubstageGroupSize(substages.length, prevSize);
+      const groupNode: FlowNode<SubstageGroupNodeData> = {
+        id: groupId,
+        type: SUBSTAGE_GROUP_NODE_TYPE,
+        position: groupPos,
+        style: { width: groupSize.width, height: groupSize.height },
+        zIndex: -1,
+        selectable: true,
+        draggable: true,
+        data: {
+          parentStateId: stageId,
+          stageLabel,
+          minWidth: box.width,
+          minHeight: box.height,
+        },
+      };
+
+      if (existingGroup) {
+        next = next.map((n) => (n.id === groupId ? groupNode : n));
+      } else {
+        next = [...next, groupNode];
+      }
+
+      for (let i = 0; i < substages.length; i++) {
+        const ss = substages[i]!;
+        const nodeId = substageNodeId(stageId, ss.id);
+        const defaultRel = { x: box.innerPadX, y: box.innerPadTop + i * box.rowHeight };
+        const existing = next.find((n) => n.id === nodeId);
+        const position = ss.position ?? existing?.position ?? defaultRel;
+        const style = existing?.style ?? DEFAULT_SUBSTAGE_NODE_SIZE;
+        const data: SubstageNodeData = {
+          label: ss.label,
+          substageId: ss.id,
+          parentStateId: stageId,
+          parentLabel: stageLabel,
+        };
+        if (existing) {
+          next = next.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  parentId: groupId,
+                  extent: "parent" as const,
+                  position,
+                  style,
+                  sourcePosition: Position.Right,
+                  targetPosition: Position.Left,
+                  data,
+                }
+              : n,
+          );
+        } else {
+          next.push({
+            id: nodeId,
+            type: SUBSTAGE_NODE_TYPE,
+            parentId: groupId,
+            extent: "parent",
+            position,
+            sourcePosition: Position.Right,
+            targetPosition: Position.Left,
+            style,
+            data,
+          });
+        }
+      }
+      return next;
+    },
+    [],
+  );
+
+  const updateSelectedNodeData = useCallback(
+    (patch: Partial<StageNodeData>) => {
+      if (!selectedNodeId) return;
+      setNodes((nds) => {
+        const stageNode = nds.find((n) => n.id === selectedNodeId && n.type === STAGE_NODE_TYPE) as
+          | FlowNode<StageNodeData>
+          | undefined;
+        if (!stageNode) return nds;
+        const merged: StageNodeData = {
+          label: stageNode.data?.label ?? "Stage",
+          substages: stageNode.data?.substages ?? [],
+          defaultSubstageId: stageNode.data?.defaultSubstageId ?? stageNode.data?.substages?.[0]?.id ?? "",
+          substageTransitions: stageNode.data?.substageTransitions ?? [],
+          substageExits: stageNode.data?.substageExits ?? [],
+          ...patch,
+        };
+        let next = nds.map((n) =>
+          n.id === selectedNodeId ? { ...n, data: merged } : n,
+        ) as FlowNode<StageNodeData | SubstageNodeData | SubstageGroupNodeData>[];
+        if (patch.substages) {
+          next = syncSubstageNodesForStage(
+            next,
+            selectedNodeId,
+            patch.substages,
+            merged.label,
+            stageNode.position,
+          );
+        } else if (patch.label) {
+          const gid = substageGroupId(selectedNodeId);
+          next = next.map((n) => {
+            if (n.id === gid && n.type === SUBSTAGE_GROUP_NODE_TYPE) {
+              const gData = n.data as SubstageGroupNodeData;
+              return { ...n, data: { ...gData, stageLabel: merged.label } };
+            }
+            const parsed = parseSubstageNodeId(n.id);
+            if (parsed?.parentStateId === selectedNodeId && n.type === SUBSTAGE_NODE_TYPE) {
+              return { ...n, data: { ...(n.data as SubstageNodeData), parentLabel: merged.label } };
+            }
+            return n;
+          });
+        }
+        return next;
+      });
+    },
+    [selectedNodeId, setNodes, syncSubstageNodesForStage],
+  );
+
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, _node: FlowNode<StageNodeData>) => {
+    (_: React.MouseEvent, node: FlowNode<StageNodeData | SubstageNodeData | SubstageGroupNodeData>) => {
       blurBlockingFocus();
-      /** Avoid edge + node both marked selected — Delete would remove both. */
       setSelectedEdgeId(null);
+      const group = parseSubstageGroupId(node.id);
+      if (group) {
+        setSelectedNodeId(node.id);
+        setPanelTab("info");
+        return;
+      }
+      const ss = parseSubstageNodeId(node.id);
+      if (ss) {
+        setSelectedNodeId(ss.parentStateId);
+        setPanelTab("info");
+        return;
+      }
+      setSelectedNodeId(node.id);
+      setPanelTab("info");
     },
     [blurBlockingFocus],
   );
@@ -290,8 +728,9 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   }, []);
 
   const onEdgeClick = useCallback(
-    (_: React.MouseEvent, edge: Edge<TransitionEdgeData>) => {
+    (_: React.MouseEvent, edge: Edge<CanvasEdgeData>) => {
       blurBlockingFocus();
+      setSelectedNodeId(null);
       setSelectedEdgeId(edge.id);
       setPanelTab("transition");
     },
@@ -301,6 +740,7 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   const onPaneClick = useCallback(() => {
     blurBlockingFocus();
     setSelectedEdgeId(null);
+    setSelectedNodeId(null);
   }, [blurBlockingFocus]);
 
   const tabBtn = (id: PanelTab, label: string) => (
@@ -336,10 +776,11 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
             onNodeClick={onNodeClick}
             onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
             deleteKeyCode={["Backspace", "Delete"]}
-            defaultEdgeOptions={{ interactionWidth: 28 }}
+            defaultEdgeOptions={{ type: BLUEPRINT_LABELED_EDGE_TYPE, interactionWidth: 28 }}
             onEdgeClick={onEdgeClick}
             onPaneClick={onPaneClick}
             className="bg-[#eef0f3]"
@@ -397,13 +838,15 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
                   href="/developer/lead-settings/fields-configurator"
                   className="mt-2 inline-block text-[10px] font-semibold text-accent underline-offset-2 hover:underline"
                 >
-                  Edit stage options in Fields configurator →
+                  More field settings →
                 </Link>
               </div>
 
-              <AvailableStagesDragList
-                stageLabels={stagePaletteLabels}
-                stageSourceLabel={stagePickSource?.label}
+              <StageFieldOptionsPanel
+                stageField={stagePickSource}
+                onAddStage={handleAddStageOption}
+                onRemoveStage={handleRemoveStageOption}
+                onRenameStage={handleRenameStageOption}
                 onDragSessionStart={() => {
                   draggingPaletteRef.current = true;
                 }}
@@ -412,6 +855,24 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
                   setDropHighlight(false);
                 }}
               />
+              {selectedStageNode ? (
+                <StageInspector
+                  stageLabel={selectedStageNode.data?.label ?? "Stage"}
+                  substages={selectedStageNode.data?.substages ?? []}
+                  defaultSubstageId={selectedStageNode.data?.defaultSubstageId ?? ""}
+                  substageTransitions={selectedStageNode.data?.substageTransitions ?? []}
+                  substageExits={selectedStageNode.data?.substageExits ?? []}
+                  onSubstagesChange={(substages) => updateSelectedNodeData({ substages })}
+                  onDefaultSubstageChange={(defaultSubstageId) => updateSelectedNodeData({ defaultSubstageId })}
+                  onSubstageTransitionsChange={(substageTransitions) => updateSelectedNodeData({ substageTransitions })}
+                  onSubstageExitsChange={(substageExits) => updateSelectedNodeData({ substageExits })}
+                  onClose={() => setSelectedNodeId(null)}
+                />
+              ) : (
+                <p className="shrink-0 rounded-lg border border-dashed border-border-soft bg-zinc-50 px-3 py-3 text-[10px] leading-relaxed text-muted">
+                  <strong className="text-ink">Tip:</strong> click a main stage to add sub-stages — they appear in the dashed violet group linked to that stage.
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

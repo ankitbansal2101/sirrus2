@@ -4,7 +4,7 @@ import type {
   AfterCreateRecordFieldBinding,
   AfterCreateRecordTargetModule,
   AfterTransitionTaskDueAnchor,
-  BlueprintTransition,
+  TransitionAutomation,
 } from "@/lib/blueprint/types";
 import { fieldsForConnectedModule } from "@/lib/leads/connected-module-fields";
 import type { FieldDefinition } from "@/lib/fields-config/types";
@@ -125,7 +125,7 @@ export function collectCreateRecordRepNeeds(
 }
 
 export function collectAllCreateRecordRepNeeds(
-  t: BlueprintTransition,
+  t: TransitionAutomation,
   lead: LeadRecord,
   leadFields: FieldDefinition[],
 ): CreateRecordRepFieldNeed[] {

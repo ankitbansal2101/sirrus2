@@ -77,15 +77,11 @@ export const STANDARD_BLUEPRINT_STATES = [
   { id: "st_new", label: "New" },
   { id: "st_contacted", label: "Contacted" },
   { id: "st_qualified", label: "Qualified" },
-  { id: "st_sv_sched", label: "Site Visit Scheduled" },
-  { id: "st_sv_done", label: "Site Visit Done" },
-  { id: "st_srv_sched", label: "Site Revisit Scheduled" },
-  { id: "st_srv_done", label: "Site Revisit done" },
-  { id: "st_sv_resched", label: "Site Visit Rescheduled" },
-  { id: "st_srv_resched", label: "Site Revisit rescheduled" },
+  { id: "st_site_visit", label: "Site Visit" },
   { id: "st_opp", label: "Opportunity" },
-  { id: "st_dropped", label: "Dropped" },
+  { id: "st_negotiation", label: "Negotiation" },
   { id: "st_booked", label: "Booked" },
+  { id: "st_dropped", label: "Dropped" },
 ] as const;
 
 /** Product default lead fields (data types + labels). `Stage` + opportunity date support the Standard blueprint. */

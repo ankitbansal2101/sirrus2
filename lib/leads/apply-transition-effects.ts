@@ -1,4 +1,4 @@
-import type { BlueprintTransition } from "@/lib/blueprint/types";
+import type { TransitionAutomation } from "@/lib/blueprint/types";
 import {
   buildCreateRecordRowValues,
   buildDemoTaskRow,
@@ -9,7 +9,7 @@ import type { LeadRecord, LeadRelatedDemoRow } from "@/lib/leads/types";
 
 export type ApplyTransitionAutomationArgs = {
   lead: LeadRecord;
-  transition: BlueprintTransition;
+  transition: TransitionAutomation;
   leadFields: FieldDefinition[];
   formDraft: Record<string, string>;
   executedAt: Date;

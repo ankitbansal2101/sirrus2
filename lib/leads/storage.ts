@@ -3,10 +3,10 @@ import { schedulePrototypeDiskPush } from "@/lib/prototype-persist/push";
 import type { BlueprintDocument } from "@/lib/blueprint/types";
 import { defaultBlueprintDocument } from "@/lib/blueprint/standard-blueprint";
 import { resolveStageField } from "@/lib/blueprint/from-fields-schema";
-import { createDefaultLeadFields } from "@/lib/fields-config/types";
+import { createDefaultLeadFields, type FieldDefinition } from "@/lib/fields-config/types";
 import { loadFieldsSchema } from "@/lib/fields-config/schema-storage";
 import type { LeadRecord, LeadRelatedDemoRow } from "@/lib/leads/types";
-import { stateToStageOptionId } from "@/lib/leads/stage-bridge";
+import { defaultSubstageIdForState, stateToStageOptionId, substageFieldApiKey } from "@/lib/leads/stage-bridge";
 
 export const LEADS_STORAGE_KEY = "sirrus2_leads_v1";
 
@@ -74,6 +74,98 @@ function nextDisplayId(seq: number) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `L${String(y).padStart(2, "0")}${m}${day}${String(seq).padStart(4, "0")}`;
+}
+
+function maxDisplaySeq(leads: LeadRecord[]): number {
+  let max = 2600;
+  for (const l of leads) {
+    const m = /^L\d{6}(\d{4})$/.exec(l.displayId ?? "");
+    if (m) max = Math.max(max, Number.parseInt(m[1]!, 10));
+  }
+  return max;
+}
+
+type TestLeadSpec = {
+  name: string;
+  stateLabel: string;
+  substageLabel?: string;
+};
+
+/** Sample leads spread across main stages (and sub-stages when the active blueprint defines them). */
+export function buildBlueprintTestLeads(
+  fields: FieldDefinition[],
+  doc: BlueprintDocument,
+  existing: LeadRecord[],
+): LeadRecord[] {
+  const stageField = resolveStageField(fields, doc.stageField);
+  const substageKey = substageFieldApiKey(doc);
+  const specs: TestLeadSpec[] = [
+    { name: "Substage Test — New", stateLabel: "New" },
+    { name: "Substage Test — Contacted", stateLabel: "Contacted" },
+    { name: "Substage Test — Qualified", stateLabel: "Qualified" },
+    { name: "Substage Test — SV Scheduled", stateLabel: "Site Visit", substageLabel: "Scheduled" },
+    { name: "Substage Test — SV Done", stateLabel: "Site Visit", substageLabel: "Done" },
+    { name: "Substage Test — SV Cancelled", stateLabel: "Site Visit", substageLabel: "Cancelled" },
+    { name: "Substage Test — SV No Show", stateLabel: "Site Visit", substageLabel: "No Show" },
+    { name: "Substage Test — Opportunity", stateLabel: "Opportunity" },
+  ];
+
+  const assignField = fields.find((f) => f.apiKey === "assigned_to") ?? fields.find((f) => f.apiKey === "lead_owner");
+  const ownerOpt = assignField?.options[0];
+  const sourceField = fields.find((f) => f.apiKey === "source");
+  const srcOpts = sourceField?.options ?? [];
+  let seq = maxDisplaySeq(existing) + 1;
+
+  return specs.map((spec, i) => {
+    const state = doc.states.find((s) => s.label.trim().toLowerCase() === spec.stateLabel.trim().toLowerCase());
+    const stageOptionId = state && stageField ? stateToStageOptionId(stageField, state) ?? "" : "";
+    let substageId = "";
+    if (state && spec.substageLabel) {
+      const hit = state.substages?.find(
+        (ss) => ss.label.trim().toLowerCase() === spec.substageLabel!.trim().toLowerCase(),
+      );
+      substageId = hit?.id ?? defaultSubstageIdForState(state);
+    } else if (state?.substages?.length) {
+      substageId = defaultSubstageIdForState(state);
+    }
+
+    const values: Record<string, string> = {};
+    for (const f of fields) {
+      if (f.apiKey === "lead_name") values[f.apiKey] = spec.name;
+      else if (f.apiKey === "whatsapp_number" || f.apiKey === "phone")
+        values[f.apiKey] = `91000${String(20000 + i).slice(-4)}`;
+      else if (f.apiKey === "alternate_number") values[f.apiKey] = "";
+      else if (f.apiKey === "email") values[f.apiKey] = `substage.test${i + 1}@example.com`;
+      else if (f.apiKey === "assigned_to" && ownerOpt) values[f.apiKey] = ownerOpt.id;
+      else if (f.apiKey === "lead_owner" && ownerOpt) values[f.apiKey] = ownerOpt.id;
+      else if (f.apiKey === "source" && srcOpts.length) values[f.apiKey] = srcOpts[i % srcOpts.length]!.id;
+      else if (f.apiKey === doc.stageField || f.apiKey === "stage") values[f.apiKey] = stageOptionId;
+      else if (f.apiKey === substageKey) values[f.apiKey] = substageId;
+      else values[f.apiKey] = "";
+    }
+
+    const now = new Date(Date.now() - i * 3600000).toISOString();
+    const baseIndex = existing.length + i;
+    return {
+      id: newLeadId(),
+      displayId: nextDisplayId(seq++),
+      values,
+      createdAt: now,
+      updatedAt: now,
+      relatedDemo: seedRelatedDemoForLead(baseIndex),
+    };
+  });
+}
+
+/** Append blueprint test leads to localStorage (for Manage leads / sub-stage flows). */
+export function appendBlueprintTestLeads(): LeadRecord[] {
+  const fields = loadFieldsSchema() ?? createDefaultLeadFields();
+  const doc = loadBlueprintForSeed();
+  const existing = loadLeads();
+  const added = buildBlueprintTestLeads(fields, doc, existing);
+  const merged = [...existing, ...added];
+  saveLeads(merged);
+  return merged;
 }
 
 function seedLeads(): LeadRecord[] {
