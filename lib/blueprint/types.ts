@@ -103,7 +103,13 @@ export type AfterAutoTask = {
   customDueDatetime: string;
 };
 
-export type AfterCreateRecordTargetModule = "leads" | "channel_partner";
+export type AfterCreateRecordTargetModule = "leads" | "channel_partner" | "booking";
+
+export function labelForCreateRecordTarget(moduleId: AfterCreateRecordTargetModule): string {
+  if (moduleId === "channel_partner") return "Channel Partner";
+  if (moduleId === "booking") return "Booking";
+  return "Lead";
+}
 
 export type AfterCreateRecordFieldBinding = {
   id: string;
@@ -178,6 +184,13 @@ export type BlueprintTransition = TransitionAutomation & {
 
 export const DEFAULT_SUBSTAGE_FIELD_API_KEY = "substage";
 
+/** Review/activation lifecycle. Visual builder and Builder Agent share this on the same document. */
+export type BlueprintLifecycleStatus = "draft" | "active" | "inactive";
+
+/**
+ * Canonical Blueprint configuration.
+ * The visual canvas and the Builder Agent both read/write this model — there is no separate AI shape.
+ */
 export type BlueprintDocument = {
   id: string;
   name: string;
@@ -187,7 +200,12 @@ export type BlueprintDocument = {
   substageField?: string;
   states: BlueprintState[];
   transitions: BlueprintTransition[];
+  /** Omitted on older documents. Never set to `active` by the Builder Agent — user must Approve & Activate. */
+  status?: BlueprintLifecycleStatus;
 };
+
+/** Alias used by the agentic builder layer. Same object as the canvas. */
+export type BlueprintConfig = BlueprintDocument;
 
 export function newEntityId(prefix: string): string {
   const c = globalThis.crypto;

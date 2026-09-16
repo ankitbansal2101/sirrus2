@@ -26,7 +26,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # env
+.env
 .env*.local
+
+# typescript
+*.tsbuildinfo
 
 # local prototype snapshot (fields / blueprint / leads) — dev-only API writes here
 /data/prototype-state.json

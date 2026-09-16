@@ -52,6 +52,9 @@ export function applyTransitionAutomation(args: ApplyTransitionAutomationArgs): 
       const nextCp: LeadRelatedDemoRow[] = [...(lead.relatedDemo?.channel_partner ?? [])];
       nextCp.push(row);
       lead.relatedDemo = { ...lead.relatedDemo, channel_partner: nextCp };
+    } else if (rec.targetModule === "booking") {
+      /* Prototype: Booking create-record is stored on the Blueprint; no booking table yet. */
+      continue;
     } else {
       const values: Record<string, string> = {};
       for (const f of leadFields) values[f.apiKey] = "";

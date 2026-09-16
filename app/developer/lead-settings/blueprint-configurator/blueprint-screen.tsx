@@ -10,7 +10,7 @@ import { BlueprintWorkspaceProvider } from "@/components/blueprint-configurator/
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
 import { blueprintDocumentExists } from "@/lib/blueprint/storage";
 
-function BlueprintEditorScreen({ blueprintId }: { blueprintId: string }) {
+function BlueprintEditorScreen({ blueprintId, openAi }: { blueprintId: string; openAi: boolean }) {
   const exists = useMemo(() => blueprintDocumentExists(blueprintId), [blueprintId]);
 
   if (!exists) {
@@ -36,13 +36,13 @@ function BlueprintEditorScreen({ blueprintId }: { blueprintId: string }) {
   }
 
   return (
-    <BlueprintWorkspaceProvider>
+    <BlueprintWorkspaceProvider initialAiPanelOpen={openAi}>
       <div className="flex min-h-0 flex-1 flex-col">
         <DeveloperPageHeader
           backHref="/developer/lead-settings/blueprint-configurator"
           backAriaLabel="All blueprints"
           title="Edit blueprint"
-          description="Drag stages, connect transitions, then set the form on each move and auto field values after."
+          description="Design stages on the canvas, or describe the process in AI Builder on the left."
           actions={<BlueprintSaveToolbar />}
         />
         <BlueprintConfiguratorShell blueprintId={blueprintId} />
@@ -54,12 +54,13 @@ function BlueprintEditorScreen({ blueprintId }: { blueprintId: string }) {
 function BlueprintScreenInner() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const openAi = searchParams.get("ai") === "1";
 
   if (!editId) {
     return <BlueprintListView />;
   }
 
-  return <BlueprintEditorScreen blueprintId={editId} />;
+  return <BlueprintEditorScreen blueprintId={editId} openAi={openAi} />;
 }
 
 export function BlueprintScreen() {

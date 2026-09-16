@@ -86,8 +86,47 @@ export type CreateRecordRepFieldNeed = {
   fieldDef?: FieldDefinition;
 };
 
+export function bookingPrototypeFields(): FieldDefinition[] {
+  const empty = {
+    required: false,
+    allowDuplicate: true,
+    options: [] as FieldDefinition["options"],
+    defaultOptionIds: [] as string[],
+    orderPreference: "manual" as const,
+    formulaExpression: "",
+    isSystem: true,
+    locked: true,
+    includeInFilters: true,
+  };
+  return [
+    {
+      id: "bk-name",
+      apiKey: "booking_name",
+      label: "Booking name",
+      dataType: "text",
+      ...empty,
+      required: true,
+    },
+    {
+      id: "bk-date",
+      apiKey: "booking_date",
+      label: "Booking date",
+      dataType: "date",
+      ...empty,
+    },
+    {
+      id: "bk-amount",
+      apiKey: "booking_amount",
+      label: "Amount",
+      dataType: "number",
+      ...empty,
+    },
+  ];
+}
+
 function targetDefsForModule(m: AfterCreateRecordTargetModule, leadFields: FieldDefinition[]): FieldDefinition[] {
   if (m === "leads") return leadFields;
+  if (m === "booking") return bookingPrototypeFields();
   return fieldsForConnectedModule("channel_partner");
 }
 

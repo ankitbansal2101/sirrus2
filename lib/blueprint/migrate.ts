@@ -102,7 +102,10 @@ function normalizeFieldBinding(raw: unknown): AfterCreateRecordFieldBinding {
 
 function normalizeCreateRecord(raw: unknown): AfterCreateRecord {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  const tm = o.targetModule === "leads" || o.targetModule === "channel_partner" ? o.targetModule : "channel_partner";
+  const tm =
+    o.targetModule === "leads" || o.targetModule === "channel_partner" || o.targetModule === "booking"
+      ? o.targetModule
+      : "channel_partner";
   const rawBindings = o.fieldBindings ?? o.fields;
   const arr = Array.isArray(rawBindings) ? rawBindings : [];
   return {

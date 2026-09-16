@@ -259,7 +259,7 @@ export function blueprintToFlow(doc: BlueprintDocument): {
 }
 
 export function flowToBlueprint(
-  base: Pick<BlueprintDocument, "id" | "name" | "module" | "stageField" | "substageField">,
+  base: Pick<BlueprintDocument, "id" | "name" | "module" | "stageField" | "substageField" | "status">,
   nodes: Node<StageNodeData | SubstageNodeData | SubstageGroupNodeData>[],
   edges: Edge<CanvasEdgeData>[],
 ): BlueprintDocument {

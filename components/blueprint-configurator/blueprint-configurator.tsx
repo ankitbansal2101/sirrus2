@@ -85,6 +85,7 @@ import {
 } from "@/lib/blueprint/types";
 import { saveFieldsSchema } from "@/lib/fields-config/schema-storage";
 import type { FieldDefinition } from "@/lib/fields-config/types";
+import { ensureStageOptionsForBlueprint } from "@/lib/blueprint/sync-stage-options";
 
 const nodeTypes = {
   [STAGE_NODE_TYPE]: StageNode,
@@ -99,20 +100,21 @@ const edgeTypes = {
 type PanelTab = "info" | "transition";
 
 function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
-  const { setSaveBanner, registerSaveHandler } = useBlueprintWorkspace();
+  const { setSaveBanner, registerSaveHandler, registerCanvasAdapter } = useBlueprintWorkspace();
   const pathname = usePathname();
   const initialDoc = useMemo(
     () => loadBlueprintById(blueprintId) ?? defaultBlueprintDocument(),
     [blueprintId],
   );
   const [docMeta, setDocMeta] = useState<
-    Pick<BlueprintDocument, "id" | "name" | "module" | "stageField" | "substageField">
+    Pick<BlueprintDocument, "id" | "name" | "module" | "stageField" | "substageField" | "status">
   >(() => ({
     id: initialDoc.id,
     name: initialDoc.name,
     module: initialDoc.module,
     stageField: initialDoc.stageField,
     substageField: initialDoc.substageField,
+    status: initialDoc.status,
   }));
   const initialFlow = useMemo(() => {
     const { nodes, edges } = blueprintToFlow(initialDoc);
@@ -127,7 +129,7 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   const [panelTab, setPanelTab] = useState<PanelTab>("info");
   const [dropHighlight, setDropHighlight] = useState(false);
   const draggingPaletteRef = useRef(false);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   const [fieldRows, setFieldRows] = useState<FieldDefinition[]>(() => resolveFieldDefinitions());
   const leadFieldOptions = useMemo(() => fieldsToLeadFieldOptions(fieldRows), [fieldRows]);
@@ -168,6 +170,7 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
       module: loaded.module,
       stageField: loaded.stageField,
       substageField: loaded.substageField,
+      status: loaded.status,
     });
     setNodes(n);
     setEdges(applyCanvasEdgeChrome(e, null));
@@ -473,6 +476,42 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     }
     window.setTimeout(() => setSaveBanner(null), 2800);
   }, [docMeta, nodes, edges, setSaveBanner]);
+
+  const applyExternalDocument = useCallback(
+    (doc: BlueprintDocument) => {
+      setDocMeta({
+        id: doc.id,
+        name: doc.name,
+        module: doc.module,
+        stageField: doc.stageField,
+        substageField: doc.substageField,
+        status: doc.status,
+      });
+      const { nodes: n, edges: e } = blueprintToFlow(doc);
+      setNodes(n);
+      setEdges(applyCanvasEdgeChrome(e, null));
+      setSelectedEdgeId(null);
+      setSelectedNodeId(null);
+      const nextFields = ensureStageOptionsForBlueprint(fieldRows, doc);
+      if (nextFields) persistFieldRows(nextFields);
+      window.requestAnimationFrame(() => fitView({ padding: 0.24, duration: 380 }));
+    },
+    [fieldRows, persistFieldRows, setEdges, setNodes, fitView],
+  );
+
+  const getDocumentRef = useRef(() => flowToBlueprint(docMeta, nodes, edges));
+  getDocumentRef.current = () => flowToBlueprint(docMeta, nodes, edges);
+  const applyDocumentRef = useRef(applyExternalDocument);
+  applyDocumentRef.current = applyExternalDocument;
+
+  useEffect(() => {
+    registerCanvasAdapter({
+      getDocument: () => getDocumentRef.current(),
+      applyDocument: (doc) => applyDocumentRef.current(doc),
+      fitView: () => fitView({ padding: 0.24, duration: 380 }),
+    });
+    return () => registerCanvasAdapter(null);
+  }, [registerCanvasAdapter, fitView]);
 
   useEffect(() => {
     registerSaveHandler(() => handleSaveBlueprint());

@@ -25,3 +25,9 @@ body {
   @apply bg-canvas text-ink antialiased;
   min-height: 100%;
 }
+
+.ai-builder-panel {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: auto;
+}

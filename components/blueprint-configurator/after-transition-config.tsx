@@ -10,12 +10,16 @@ import type {
 } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
 import { IconPlus, IconTrash } from "@/components/icons";
+import { bookingPrototypeFields } from "@/lib/blueprint/after-transition-runtime";
+import { labelForCreateRecordTarget } from "@/lib/blueprint/types";
 import { fieldsForConnectedModule } from "@/lib/leads/connected-module-fields";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 import { optionsSorted, usesOptions } from "@/lib/fields-config/types";
 
 function targetModuleDefs(m: AfterCreateRecord["targetModule"], leadFields: FieldDefinition[]) {
-  return m === "leads" ? leadFields : fieldsForConnectedModule("channel_partner");
+  if (m === "leads") return leadFields;
+  if (m === "booking") return bookingPrototypeFields();
+  return fieldsForConnectedModule("channel_partner");
 }
 
 function defaultMandatoryBindings(
@@ -131,6 +135,7 @@ function CreateRecordEditorBody({
         >
           <option value="channel_partner">Channel Partner</option>
           <option value="leads">Leads</option>
+          <option value="booking">Booking</option>
         </select>
       </div>
       <ul className="space-y-2">
@@ -476,7 +481,7 @@ export function AfterAutomationPanel({
               className="flex items-center justify-between gap-2 rounded-md border border-border-soft bg-white px-2 py-1.5 text-[11px]"
             >
               <span className="min-w-0 truncate text-ink">
-                <span className="font-semibold">{rec.targetModule === "channel_partner" ? "Channel Partner" : "Lead"}</span>
+                <span className="font-semibold">{labelForCreateRecordTarget(rec.targetModule)}</span>
                 <span className="text-muted"> · {rec.fieldBindings.length} field(s)</span>
               </span>
               <span className="flex shrink-0 gap-1">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
+import { IconSparkle } from "@/components/icons";
 import {
   BLUEPRINT_CHANGED_EVENT,
   addBlueprint,
@@ -53,13 +54,28 @@ export function BlueprintListView() {
           </>
         }
         actions={
-          <button
-            type="button"
-            onClick={onNew}
-            className="shrink-0 rounded-lg bg-accent px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:opacity-95 sm:px-3 sm:text-xs"
-          >
-            New blueprint
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const doc = addBlueprint();
+                router.push(
+                  `/developer/lead-settings/blueprint-configurator?edit=${encodeURIComponent(doc.id)}&ai=1`,
+                );
+              }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 text-[12px] font-semibold text-ink shadow-sm transition hover:border-accent/40 sm:px-3"
+            >
+              <IconSparkle className="size-3.5 text-accent" />
+              AI Blueprint Builder
+            </button>
+            <button
+              type="button"
+              onClick={onNew}
+              className="shrink-0 rounded-lg bg-accent px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:opacity-95 sm:px-3 sm:text-xs"
+            >
+              New blueprint
+            </button>
+          </div>
         }
       />
 

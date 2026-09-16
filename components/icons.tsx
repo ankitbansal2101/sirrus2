@@ -108,6 +108,96 @@ export function IconPlus(props: IconProps) {
   );
 }
 
+export function IconSparkle(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M12 3.5 13.4 8.2 18 9.5 13.4 10.8 12 15.5 10.6 10.8 6 9.5 10.6 8.2 12 3.5Z" strokeLinejoin="round" />
+      <path d="M18.5 14.5 19.2 16.6 21.5 17.2 19.2 17.8 18.5 20 17.8 17.8 15.5 17.2 17.8 16.6 18.5 14.5Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconSend(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M4.5 12 19 5l-4.2 14-3.3-4.8L4.5 12Z" strokeLinejoin="round" />
+      <path d="m11.5 14.2 3.3-4.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconEye(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M2.8 12s3.2-6 9.2-6 9.2 6 9.2 6-3.2 6-9.2 6-9.2-6-9.2-6Z" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="2.4" />
+    </svg>
+  );
+}
+
+export function IconShieldCheck(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M12 3.5 19 6.2v5.3c0 4.3-2.8 7.4-7 9-4.2-1.6-7-4.7-7-9V6.2L12 3.5Z" strokeLinejoin="round" />
+      <path d="m8.8 12 2.2 2.2 4.2-4.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconCheckCircle(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="m8.7 12.2 2.2 2.2 4.4-4.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconClose(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M7 7 17 17M17 7 7 17" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconUser(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="12" cy="8.5" r="3" />
+      <path d="M6 18.5v-.6A4.4 4.4 0 0 1 10.4 13.5h3.2A4.4 4.4 0 0 1 18 17.9v.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconTool(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M14.2 6.2a3.6 3.6 0 0 0-5 4.9L5 15.3a1.8 1.8 0 0 0 2.5 2.5l4.2-4.2a3.6 3.6 0 0 0 4.9-5l-2.2 2.2-2.2-2.2 2-2.4Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconBraces(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M9 5.5H8.2A2.2 2.2 0 0 0 6 7.7v2.1c0 .9-.6 1.7-1.5 1.7.9 0 1.5.8 1.5 1.7v2.1A2.2 2.2 0 0 0 8.2 18.5H9" strokeLinecap="round" />
+      <path d="M15 5.5h.8A2.2 2.2 0 0 1 18 7.7v2.1c0 .9.6 1.7 1.5 1.7-.9 0-1.5.8-1.5 1.7v2.1a2.2 2.2 0 0 1-2.2 2.2H15" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconFlow(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="3.5" y="4.5" width="6.5" height="4.5" rx="1.2" />
+      <rect x="14" y="9.75" width="6.5" height="4.5" rx="1.2" />
+      <rect x="3.5" y="15" width="6.5" height="4.5" rx="1.2" />
+      <path d="M10 6.75h2.2A2.3 2.3 0 0 1 14.5 9v3M10 17.25h2.2A2.3 2.3 0 0 0 14.5 15v-1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconTrash(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>

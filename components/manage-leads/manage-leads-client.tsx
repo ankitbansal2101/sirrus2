@@ -12,6 +12,7 @@ import type {
   TransitionAutomation,
   TransitionFormField,
 } from "@/lib/blueprint/types";
+import { labelForCreateRecordTarget } from "@/lib/blueprint/types";
 import { transitionCreateRecordDraftKey, collectAllCreateRecordRepNeeds } from "@/lib/blueprint/after-transition-runtime";
 import { transitionToolDraftKey } from "@/lib/blueprint/transition-tools";
 import { applyTransitionAutomation } from "@/lib/leads/apply-transition-effects";
@@ -228,7 +229,7 @@ function validateTransitionAutomation(
     for (const need of collectAllCreateRecordRepNeeds(t, lead, fieldDefs)) {
       const k = transitionCreateRecordDraftKey(t.id, need.createRecordId, need.targetFieldApiKey);
       if (!(draft[k] ?? "").trim()) {
-        return `Enter “${need.label}” for the new ${need.targetModule === "channel_partner" ? "Channel Partner" : "Lead"} record.`;
+        return `Enter “${need.label}” for the new ${labelForCreateRecordTarget(need.targetModule)} record.`;
       }
     }
   }
@@ -1965,7 +1966,7 @@ export function ManageLeadsClient() {
                           {need.label}
                           <span className="text-[#ff6678]"> *</span>
                           <span className="ml-1 text-xs font-normal text-[#7e7a95]">
-                            (new {need.targetModule === "channel_partner" ? "Channel Partner" : "Lead"})
+                            (new {labelForCreateRecordTarget(need.targetModule)})
                           </span>
                         </label>
                         <input
