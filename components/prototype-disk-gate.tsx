@@ -28,10 +28,24 @@ export function PrototypeDiskGate({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/prototype-state", { cache: "no-store" });
         const data = (await res.json()) as GetPayload;
         if (cancelled) return;
+        const localLeadsRaw = (() => {
+          try {
+            return window.localStorage.getItem("sirrus2_leads_v1");
+          } catch {
+            return null;
+          }
+        })();
+        let hasLocalLeads = false;
+        try {
+          const parsed = localLeadsRaw ? (JSON.parse(localLeadsRaw) as unknown) : null;
+          hasLocalLeads = Array.isArray(parsed) && parsed.length > 0;
+        } catch {
+          hasLocalLeads = false;
+        }
         const hydrateDisk =
           typeof process !== "undefined" &&
           process.env.NEXT_PUBLIC_PROTOTYPE_BOOTSTRAP_FROM_DISK === "1";
-        const hydrate = Boolean(data?.live) || hydrateDisk;
+        const hydrate = !hasLocalLeads && (Boolean(data?.live) || hydrateDisk);
         if (hydrate && res.ok && data?.snapshot && data.snapshot.version === 1) {
           applyPrototypeSnapshotToLocalStorage(data.snapshot);
         }
