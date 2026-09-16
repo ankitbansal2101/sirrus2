@@ -118,5 +118,5 @@ export async function saveLeadsDiskSnapshot(leads: LeadRecord[]): Promise<boolea
   };
   const savedLive = await saveLivePrototypeState(next);
   const savedDisk = writeLocalDisk(next);
-  return savedLive || savedDisk;
+  return savedLive.ok || savedDisk;
 }

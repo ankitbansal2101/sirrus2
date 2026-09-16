@@ -24,8 +24,50 @@ function blobAccess(): "private" | "public" {
   return process.env.SIRRUS_BLOB_ACCESS?.trim() === "public" ? "public" : "private";
 }
 
+function findEnv(suffix: string, valueTest?: (v: string) => boolean): string | undefined {
+  const exact = process.env[`BLOB_${suffix}`]?.trim();
+  if (exact && (!valueTest || valueTest(exact))) return exact;
+  for (const [key, raw] of Object.entries(process.env)) {
+    if (!key.endsWith(suffix)) continue;
+    const value = raw?.trim();
+    if (!value) continue;
+    if (valueTest && !valueTest(value)) continue;
+    return value;
+  }
+  return undefined;
+}
+
+function blobAuth() {
+  return {
+    token: findEnv("READ_WRITE_TOKEN"),
+    storeId: findEnv("STORE_ID", (v) => v.startsWith("store_")),
+  };
+}
+
+export function blobStoreStatus() {
+  const auth = blobAuth();
+  return {
+    hasToken: Boolean(auth.token),
+    hasStoreId: Boolean(auth.storeId),
+    hasOidc: Boolean(process.env.VERCEL_OIDC_TOKEN),
+  };
+}
+
+function authOptions() {
+  const { token, storeId } = blobAuth();
+  return {
+    ...(token ? { token } : {}),
+    ...(storeId ? { storeId } : {}),
+  };
+}
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  return "Unknown Blob error.";
+}
+
 async function readWithAccess(access: "private" | "public"): Promise<PrototypeStateFile | null> {
-  const result = await get(LIVE_SNAPSHOT_PATH, { access, useCache: false });
+  const result = await get(LIVE_SNAPSHOT_PATH, { access, useCache: false, ...authOptions() });
   if (!result || result.statusCode !== 200 || !result.stream) return null;
   const text = await new Response(result.stream).text();
   return parsePrototypeState(JSON.parse(text) as unknown);
@@ -47,25 +89,28 @@ export async function loadLivePrototypeState(): Promise<PrototypeStateFile | nul
   }
 }
 
-export async function saveLivePrototypeState(state: PrototypeStateFile): Promise<boolean> {
+export async function saveLivePrototypeState(
+  state: PrototypeStateFile,
+): Promise<{ ok: boolean; error?: string }> {
   const body = JSON.stringify(state);
   const base = {
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json" as const,
     cacheControlMaxAge: 60,
+    ...authOptions(),
   };
   const access = blobAccess();
-  try {
-    await put(LIVE_SNAPSHOT_PATH, body, { ...base, access });
-    return true;
-  } catch (e) {
-    if (!(e instanceof BlobAccessError)) return false;
+  const order = [access, access === "private" ? "public" : "private"] as const;
+  let lastError = "";
+  for (const nextAccess of order) {
     try {
-      await put(LIVE_SNAPSHOT_PATH, body, { ...base, access: access === "private" ? "public" : "private" });
-      return true;
-    } catch {
-      return false;
+      await put(LIVE_SNAPSHOT_PATH, body, { ...base, access: nextAccess });
+      return { ok: true };
+    } catch (e) {
+      lastError = errorMessage(e);
+      if (e instanceof BlobAccessError) continue;
     }
   }
+  return { ok: false, error: lastError || "Blob put failed." };
 }

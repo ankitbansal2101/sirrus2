@@ -1,6 +1,11 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { loadLivePrototypeState, parsePrototypeState, saveLivePrototypeState } from "@/lib/prototype-persist/live-store";
+import {
+  blobStoreStatus,
+  loadLivePrototypeState,
+  parsePrototypeState,
+  saveLivePrototypeState,
+} from "@/lib/prototype-persist/live-store";
 import type { PrototypeStateFile } from "@/lib/prototype-persist/types";
 
 export const runtime = "nodejs";
@@ -53,9 +58,10 @@ async function writeDisk(v: PrototypeStateFile): Promise<boolean> {
 export async function GET() {
   try {
     const live = await loadLivePrototypeState();
-    if (live) return json({ snapshot: live, live: true, disk: diskEnabled() });
+    const blob = blobStoreStatus();
+    if (live) return json({ snapshot: live, live: true, disk: diskEnabled(), blob });
     const disk = await readDisk();
-    return json({ snapshot: disk, live: false, disk: diskEnabled() });
+    return json({ snapshot: disk, live: false, disk: diskEnabled(), blob });
   } catch {
     return json({ error: "Could not read prototype snapshot." }, 500);
   }
@@ -75,14 +81,16 @@ export async function POST(req: Request) {
 
   const live = await saveLivePrototypeState(v);
   const disk = await writeDisk(v);
-  if (!live && !disk) {
+  if (!live.ok && !disk) {
     return json(
       {
         error:
-          "Live snapshot store is not configured. In Vercel → Storage, create a Blob store, connect it to this project, then redeploy.",
+          live.error ||
+          "Live snapshot store is not configured. In Vercel → Storage, connect the Blob store to this project, then Redeploy.",
+        blob: blobStoreStatus(),
       },
       501,
     );
   }
-  return json({ ok: true, live, disk });
+  return json({ ok: true, live: live.ok, disk, blob: blobStoreStatus() });
 }

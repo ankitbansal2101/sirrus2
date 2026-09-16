@@ -82,7 +82,7 @@ async function pushNow(): Promise<void> {
           headers: { "Content-Type": "application/json" },
           body: payload,
         });
-        if (!res.ok && res.status !== 501) {
+        if (!res.ok) {
           console.warn("[prototype-persist] POST failed", url, res.status);
         }
       } catch (e) {
