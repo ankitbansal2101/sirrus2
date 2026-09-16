@@ -84,6 +84,12 @@ async function pushNow(): Promise<void> {
         });
         if (!res.ok) {
           console.warn("[prototype-persist] POST failed", url, res.status);
+          return;
+        }
+        try {
+          window.localStorage.setItem("sirrus2_live_saved_at", body.savedAt);
+        } catch {
+          /* ignore */
         }
       } catch (e) {
         console.warn("[prototype-persist] POST error", url, e);

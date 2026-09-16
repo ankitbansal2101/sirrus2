@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { applyPrototypeSnapshotToLocalStorage } from "@/lib/prototype-persist/browser-sync";
+import {
+  applyPrototypeSnapshotToLocalStorage,
+  pullLiveSnapshotIfNewer,
+  rememberLiveSavedAt,
+} from "@/lib/prototype-persist/browser-sync";
 import { schedulePrototypeDiskPush } from "@/lib/prototype-persist/push";
 import type { PrototypeStateFile } from "@/lib/prototype-persist/types";
 
@@ -13,18 +17,22 @@ type GetPayload = {
 };
 
 /**
- * Loads the shared prototype snapshot. Live (Vercel Blob) snapshots hydrate localStorage
- * so the UI matches Claude MCP. Local disk restore stays opt-in via
- * `NEXT_PUBLIC_PROTOTYPE_BOOTSTRAP_FROM_DISK=1`. After load, current localStorage is
- * pushed so Claude sees frontend edits.
+ * Two-way sync with the live snapshot Claude MCP uses.
+ * Newer live data (Claude updates) is pulled into localStorage; otherwise the
+ * current browser leads are pushed so Claude stays current.
  */
 export function PrototypeDiskGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+
+    const sync = async (pushIfUnchanged: boolean) => {
       try {
+        const pulled = await pullLiveSnapshotIfNewer();
+        if (cancelled) return;
+        if (pulled) return;
+        if (!pushIfUnchanged) return;
         const res = await fetch("/api/prototype-state", { cache: "no-store" });
         const data = (await res.json()) as GetPayload;
         if (cancelled) return;
@@ -45,21 +53,32 @@ export function PrototypeDiskGate({ children }: { children: React.ReactNode }) {
         const hydrateDisk =
           typeof process !== "undefined" &&
           process.env.NEXT_PUBLIC_PROTOTYPE_BOOTSTRAP_FROM_DISK === "1";
-        const hydrate = !hasLocalLeads && (Boolean(data?.live) || hydrateDisk);
-        if (hydrate && res.ok && data?.snapshot && data.snapshot.version === 1) {
+        if (!hasLocalLeads && (Boolean(data?.live) || hydrateDisk) && res.ok && data?.snapshot?.version === 1) {
           applyPrototypeSnapshotToLocalStorage(data.snapshot);
+          if (data.snapshot.savedAt) rememberLiveSavedAt(data.snapshot.savedAt);
+        } else {
+          schedulePrototypeDiskPush();
         }
       } catch {
-        /* ignore — prototype convenience only */
-      } finally {
-        if (!cancelled) {
-          schedulePrototypeDiskPush();
-          setReady(true);
-        }
+        if (pushIfUnchanged) schedulePrototypeDiskPush();
       }
+    };
+
+    void (async () => {
+      await sync(true);
+      if (!cancelled) setReady(true);
     })();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void sync(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(() => void sync(false), 4000);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
     };
   }, []);
 
