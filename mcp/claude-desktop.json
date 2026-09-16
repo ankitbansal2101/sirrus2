@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "sirrus-leads": {
+      "url": "https://127.0.0.1:3334/mcp"
+    }
+  }
+}

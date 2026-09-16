@@ -1,0 +1,1273 @@
+{
+  "version": 1,
+  "savedAt": "2026-09-16T10:00:15.634Z",
+  "fieldsSchema": [
+    {
+      "id": "fld-lead-name",
+      "apiKey": "lead_name",
+      "label": "Full Name",
+      "dataType": "text",
+      "required": false,
+      "allowDuplicate": false,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": true,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-project-name",
+      "apiKey": "project_name",
+      "label": "Project Name",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-project_0",
+          "label": "Project A",
+          "value": "project_a"
+        },
+        {
+          "id": "opt-project_1",
+          "label": "Project B",
+          "value": "project_b"
+        },
+        {
+          "id": "opt-project_2",
+          "label": "Project C",
+          "value": "project_c"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-source",
+      "apiKey": "source",
+      "label": "Source",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-source_0",
+          "label": "Website",
+          "value": "website"
+        },
+        {
+          "id": "opt-source_1",
+          "label": "Walk-in",
+          "value": "walk_in"
+        },
+        {
+          "id": "opt-source_2",
+          "label": "Referral",
+          "value": "referral"
+        },
+        {
+          "id": "opt-source_3",
+          "label": "Partner",
+          "value": "partner"
+        },
+        {
+          "id": "opt-source_4",
+          "label": "Campaign",
+          "value": "campaign"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-sub-source",
+      "apiKey": "sub_source",
+      "label": "Sub Source",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-subsource_0",
+          "label": "Organic",
+          "value": "organic"
+        },
+        {
+          "id": "opt-subsource_1",
+          "label": "Paid",
+          "value": "paid"
+        },
+        {
+          "id": "opt-subsource_2",
+          "label": "Direct",
+          "value": "direct"
+        },
+        {
+          "id": "opt-subsource_3",
+          "label": "Social",
+          "value": "social"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-stage",
+      "apiKey": "stage",
+      "label": "Stage",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-stage-0",
+          "label": "New",
+          "value": "new"
+        },
+        {
+          "id": "opt-stage-1",
+          "label": "Contacted",
+          "value": "contacted"
+        },
+        {
+          "id": "opt-stage-2",
+          "label": "Qualified",
+          "value": "qualified"
+        },
+        {
+          "id": "opt-stage-3",
+          "label": "Site Visit",
+          "value": "site_visit"
+        },
+        {
+          "id": "opt-stage-4",
+          "label": "Opportunity",
+          "value": "opportunity"
+        },
+        {
+          "id": "opt-stage-5",
+          "label": "Negotiation",
+          "value": "negotiation"
+        },
+        {
+          "id": "opt-stage-6",
+          "label": "Booked",
+          "value": "booked"
+        },
+        {
+          "id": "opt-stage-7",
+          "label": "Dropped",
+          "value": "dropped"
+        },
+        {
+          "id": "17840d75-4f06-452f-81d1-73dcd21122a6",
+          "label": "SV",
+          "value": "sv"
+        },
+        {
+          "id": "0e9a6a7e-ab83-49ea-8c4e-4d517484adbf",
+          "label": "New Lead",
+          "value": "new_lead"
+        },
+        {
+          "id": "72451619-1fc8-42d8-acc5-506da6276c94",
+          "label": "Interested",
+          "value": "interested"
+        },
+        {
+          "id": "a0a7c136-7b19-41a3-9802-9b94fbb8e65a",
+          "label": "Closed",
+          "value": "closed"
+        },
+        {
+          "id": "0861d5e6-0c27-46dc-a014-28aafbe956a1",
+          "label": "Lost",
+          "value": "lost"
+        },
+        {
+          "id": "2e7fd8c0-1379-4df7-8a6e-306500de0898",
+          "label": "Approval",
+          "value": "approval"
+        }
+      ],
+      "defaultOptionId": "opt-stage-0",
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": true,
+      "locked": true,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-whatsapp",
+      "apiKey": "whatsapp_number",
+      "label": "Whatsapp Number",
+      "dataType": "number",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-alt-phone",
+      "apiKey": "alternate_number",
+      "label": "Alternate Number",
+      "dataType": "number",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-email",
+      "apiKey": "email",
+      "label": "Email ID",
+      "dataType": "text",
+      "required": false,
+      "allowDuplicate": false,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-assigned-to",
+      "apiKey": "assigned_to",
+      "label": "Assigned To",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-assigned_0",
+          "label": "Unassigned",
+          "value": "unassigned"
+        },
+        {
+          "id": "opt-assigned_1",
+          "label": "Agent A",
+          "value": "agent_a"
+        },
+        {
+          "id": "opt-assigned_2",
+          "label": "Agent B",
+          "value": "agent_b"
+        },
+        {
+          "id": "opt-assigned_3",
+          "label": "Agent C",
+          "value": "agent_c"
+        }
+      ],
+      "defaultOptionId": "opt-assigned_0",
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-unit-type",
+      "apiKey": "preferred_unit_type",
+      "label": "Preferred Unit Type",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-unit_0",
+          "label": "1 BHK",
+          "value": "1_bhk"
+        },
+        {
+          "id": "opt-unit_1",
+          "label": "2 BHK",
+          "value": "2_bhk"
+        },
+        {
+          "id": "opt-unit_2",
+          "label": "3 BHK",
+          "value": "3_bhk"
+        },
+        {
+          "id": "opt-unit_3",
+          "label": "Villa",
+          "value": "villa"
+        },
+        {
+          "id": "opt-unit_4",
+          "label": "Plot",
+          "value": "plot"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-max-budget",
+      "apiKey": "max_budget",
+      "label": "Max Budget",
+      "dataType": "number",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-property-status",
+      "apiKey": "property_status",
+      "label": "Property Status",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-propstat_0",
+          "label": "Under construction",
+          "value": "under_construction"
+        },
+        {
+          "id": "opt-propstat_1",
+          "label": "Ready to move",
+          "value": "ready_to_move"
+        },
+        {
+          "id": "opt-propstat_2",
+          "label": "Resale",
+          "value": "resale"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-other-pref",
+      "apiKey": "other_preferences",
+      "label": "Other Preferences",
+      "dataType": "paragraph",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-purpose",
+      "apiKey": "purpose",
+      "label": "Purpose",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-purpose_0",
+          "label": "Investment",
+          "value": "investment"
+        },
+        {
+          "id": "opt-purpose_1",
+          "label": "Self use",
+          "value": "self_use"
+        },
+        {
+          "id": "opt-purpose_2",
+          "label": "Both",
+          "value": "both"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-pref-loc",
+      "apiKey": "preferred_location",
+      "label": "Preferred location",
+      "dataType": "text",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-age",
+      "apiKey": "age",
+      "label": "Age",
+      "dataType": "number",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-gender",
+      "apiKey": "gender",
+      "label": "Gender",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-gender_0",
+          "label": "Male",
+          "value": "male"
+        },
+        {
+          "id": "opt-gender_1",
+          "label": "Female",
+          "value": "female"
+        },
+        {
+          "id": "opt-gender_2",
+          "label": "Other",
+          "value": "other"
+        },
+        {
+          "id": "opt-gender_3",
+          "label": "Prefer not to say",
+          "value": "prefer_not_to_say"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-occupation",
+      "apiKey": "occupation",
+      "label": "Occupation",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-occ_0",
+          "label": "Salaried",
+          "value": "salaried"
+        },
+        {
+          "id": "opt-occ_1",
+          "label": "Business",
+          "value": "business"
+        },
+        {
+          "id": "opt-occ_2",
+          "label": "Professional",
+          "value": "professional"
+        },
+        {
+          "id": "opt-occ_3",
+          "label": "Retired",
+          "value": "retired"
+        },
+        {
+          "id": "opt-occ_4",
+          "label": "Student",
+          "value": "student"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-qualification",
+      "apiKey": "qualification",
+      "label": "Qualification",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-qual_0",
+          "label": "Graduate",
+          "value": "graduate"
+        },
+        {
+          "id": "opt-qual_1",
+          "label": "Post graduate",
+          "value": "post_graduate"
+        },
+        {
+          "id": "opt-qual_2",
+          "label": "Other",
+          "value": "other"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-funding",
+      "apiKey": "funding_source",
+      "label": "Funding Source",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-fund_0",
+          "label": "Home loan",
+          "value": "home_loan"
+        },
+        {
+          "id": "opt-fund_1",
+          "label": "Self funded",
+          "value": "self_funded"
+        },
+        {
+          "id": "opt-fund_2",
+          "label": "Mix",
+          "value": "mix"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-dropped-reasons",
+      "apiKey": "dropped_reason",
+      "label": "Dropped Reasons",
+      "dataType": "picklist",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [
+        {
+          "id": "opt-drop_0",
+          "label": "Price",
+          "value": "price"
+        },
+        {
+          "id": "opt-drop_1",
+          "label": "Location",
+          "value": "location"
+        },
+        {
+          "id": "opt-drop_2",
+          "label": "Competition",
+          "value": "competition"
+        },
+        {
+          "id": "opt-drop_3",
+          "label": "Not interested",
+          "value": "not_interested"
+        },
+        {
+          "id": "opt-drop_4",
+          "label": "Unresponsive",
+          "value": "unresponsive"
+        },
+        {
+          "id": "opt-drop_5",
+          "label": "Other",
+          "value": "other"
+        }
+      ],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-sv-sched-dt",
+      "apiKey": "site_visit_scheduled_date",
+      "label": "Site Visit Scheduled date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-srv-sched-dt",
+      "apiKey": "site_revisit_scheduled_date",
+      "label": "Site revisit scheduled date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-sv-done-dt",
+      "apiKey": "site_visit_done_date",
+      "label": "Site visit done date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-srv-done-dt",
+      "apiKey": "site_revisit_done_date",
+      "label": "Site revisit done date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-sv-resched-dt",
+      "apiKey": "site_visit_rescheduled_date",
+      "label": "Site visit rescheduled date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-srv-resched-dt",
+      "apiKey": "site_revisit_rescheduled_date",
+      "label": "Site revisit rescheduled date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-dropped-dt",
+      "apiKey": "dropped_date",
+      "label": "Dropped date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-qualified-dt",
+      "apiKey": "qualified_date",
+      "label": "Qualified date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-contacted-dt",
+      "apiKey": "contacted_date",
+      "label": "Contacted date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    },
+    {
+      "id": "fld-opportunity-dt",
+      "apiKey": "opportunity_date",
+      "label": "Opportunity date",
+      "dataType": "date_time",
+      "required": false,
+      "allowDuplicate": true,
+      "options": [],
+      "defaultOptionIds": [],
+      "orderPreference": "manual",
+      "formulaExpression": "",
+      "isSystem": false,
+      "locked": false,
+      "includeInFilters": true
+    }
+  ],
+  "leads": [
+    {
+      "id": "a8216998-6808-4823-84d2-c3f1ed106cac",
+      "displayId": "L2609162600",
+      "values": {
+        "lead_name": "Rangeet BookingTest",
+        "project_name": "",
+        "source": "opt-source_0",
+        "sub_source": "",
+        "stage": "opt-stage-1",
+        "whatsapp_number": "900000000",
+        "alternate_number": "",
+        "email": "lead1@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-16T10:00:14.730Z",
+      "updatedAt": "2026-09-16T10:00:14.730Z",
+      "relatedDemo": {
+        "calls": [],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T10:00:14.731Z",
+            "task_status": "ts_open",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 0",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "67555af5-4302-41f3-86e7-9ec3d08a0874",
+      "displayId": "L2609162601",
+      "values": {
+        "lead_name": "Sunit Auto",
+        "project_name": "",
+        "source": "opt-source_1",
+        "sub_source": "",
+        "stage": "2e7fd8c0-1379-4df7-8a6e-306500de0898",
+        "whatsapp_number": "900000001",
+        "alternate_number": "",
+        "email": "lead2@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-13T10:00:14.731Z",
+      "updatedAt": "2026-09-13T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [
+          {
+            "call_start_time": "2026-09-16T07:00:14.731Z",
+            "call_end_time": "2026-09-16T08:00:14.731Z",
+            "call_duration_seconds": "130",
+            "call_owner": "co_b",
+            "call_type": "ct_in",
+            "call_status": "cs_comp"
+          }
+        ],
+        "tasks": [],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 1",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "26821e15-b8a2-4103-bbc6-ee4794e3de40",
+      "displayId": "L2609162602",
+      "values": {
+        "lead_name": "PerfTestingw",
+        "project_name": "",
+        "source": "opt-source_2",
+        "sub_source": "",
+        "stage": "opt-stage-5",
+        "whatsapp_number": "900000002",
+        "alternate_number": "",
+        "email": "lead3@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-10T10:00:14.731Z",
+      "updatedAt": "2026-09-10T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [
+          {
+            "call_start_time": "2026-09-16T06:00:14.731Z",
+            "call_end_time": "2026-09-16T07:00:14.731Z",
+            "call_duration_seconds": "140",
+            "call_owner": "co_a",
+            "call_type": "ct_in",
+            "call_status": "cs_comp"
+          }
+        ],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T08:00:14.731Z",
+            "task_status": "ts_open",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": []
+      }
+    },
+    {
+      "id": "a72f493f-b68f-4c61-84a5-07ad0bbf45b1",
+      "displayId": "L2609162603",
+      "values": {
+        "lead_name": "Dev Test one",
+        "project_name": "",
+        "source": "opt-source_3",
+        "sub_source": "",
+        "stage": "0861d5e6-0c27-46dc-a014-28aafbe956a1",
+        "whatsapp_number": "900000003",
+        "alternate_number": "",
+        "email": "lead4@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-07T10:00:14.731Z",
+      "updatedAt": "2026-09-07T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T07:00:14.731Z",
+            "task_status": "ts_done",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 3",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ff06badb-24c9-4b48-b3e0-7247bd367817",
+      "displayId": "L2609162604",
+      "values": {
+        "lead_name": "srikant singh",
+        "project_name": "",
+        "source": "opt-source_4",
+        "sub_source": "",
+        "stage": "opt-stage-1",
+        "whatsapp_number": "900000004",
+        "alternate_number": "",
+        "email": "lead5@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-04T10:00:14.731Z",
+      "updatedAt": "2026-09-04T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [
+          {
+            "call_start_time": "2026-09-16T04:00:14.731Z",
+            "call_end_time": "2026-09-16T05:00:14.731Z",
+            "call_duration_seconds": "160",
+            "call_owner": "co_a",
+            "call_type": "ct_in",
+            "call_status": "cs_comp"
+          }
+        ],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T06:00:14.731Z",
+            "task_status": "ts_open",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 4",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eebfcf71-dcd1-4423-99d6-3483eddbee0f",
+      "displayId": "L2609162605",
+      "values": {
+        "lead_name": "Amit Singh",
+        "project_name": "",
+        "source": "opt-source_0",
+        "sub_source": "",
+        "stage": "2e7fd8c0-1379-4df7-8a6e-306500de0898",
+        "whatsapp_number": "900000005",
+        "alternate_number": "",
+        "email": "lead6@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-09-01T10:00:14.731Z",
+      "updatedAt": "2026-09-01T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [
+          {
+            "call_start_time": "2026-09-16T03:00:14.731Z",
+            "call_end_time": "2026-09-16T04:00:14.731Z",
+            "call_duration_seconds": "170",
+            "call_owner": "co_b",
+            "call_type": "ct_in",
+            "call_status": "cs_comp"
+          }
+        ],
+        "tasks": [],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 5",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a20b79f2-d567-4089-bb90-1c191cc78fdb",
+      "displayId": "L2609162606",
+      "values": {
+        "lead_name": "Dishant",
+        "project_name": "",
+        "source": "opt-source_1",
+        "sub_source": "",
+        "stage": "opt-stage-5",
+        "whatsapp_number": "900000006",
+        "alternate_number": "",
+        "email": "lead7@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-08-29T10:00:14.731Z",
+      "updatedAt": "2026-08-29T10:00:14.731Z",
+      "relatedDemo": {
+        "calls": [],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T04:00:14.731Z",
+            "task_status": "ts_open",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": [
+          {
+            "cp_name": "Partner 6",
+            "cp_tier": "tier_gold",
+            "cp_region": "reg_n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "22c7f6a8-a07c-4026-9f37-34d0843a0fbf",
+      "displayId": "L2609162607",
+      "values": {
+        "lead_name": "Sparsh",
+        "project_name": "",
+        "source": "opt-source_2",
+        "sub_source": "",
+        "stage": "0861d5e6-0c27-46dc-a014-28aafbe956a1",
+        "whatsapp_number": "900000007",
+        "alternate_number": "",
+        "email": "lead8@example.com",
+        "assigned_to": "opt-assigned_0",
+        "preferred_unit_type": "",
+        "max_budget": "",
+        "property_status": "",
+        "other_preferences": "",
+        "purpose": "",
+        "preferred_location": "",
+        "age": "",
+        "gender": "",
+        "occupation": "",
+        "qualification": "",
+        "funding_source": "",
+        "dropped_reason": "",
+        "site_visit_scheduled_date": "",
+        "site_revisit_scheduled_date": "",
+        "site_visit_done_date": "",
+        "site_revisit_done_date": "",
+        "site_visit_rescheduled_date": "",
+        "site_revisit_rescheduled_date": "",
+        "dropped_date": "",
+        "qualified_date": "",
+        "contacted_date": "",
+        "opportunity_date": ""
+      },
+      "createdAt": "2026-08-26T10:00:14.732Z",
+      "updatedAt": "2026-08-26T10:00:14.732Z",
+      "relatedDemo": {
+        "calls": [
+          {
+            "call_start_time": "2026-09-16T01:00:14.732Z",
+            "call_end_time": "2026-09-16T02:00:14.732Z",
+            "call_duration_seconds": "190",
+            "call_owner": "co_b",
+            "call_type": "ct_in",
+            "call_status": "cs_comp"
+          }
+        ],
+        "tasks": [
+          {
+            "task_type": "tt_fu",
+            "due_date": "2026-09-17T03:00:14.732Z",
+            "task_status": "ts_done",
+            "task_owner": "to_a"
+          }
+        ],
+        "channel_partner": []
+      }
+    }
+  ]
+}

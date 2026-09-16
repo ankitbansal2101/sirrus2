@@ -34,3 +34,6 @@ yarn-error.log*
 
 # local prototype snapshot (fields / blueprint / leads) — dev-only API writes here
 /data/prototype-state.json
+
+# generated localhost TLS for the Leads MCP server
+/mcp/certs/

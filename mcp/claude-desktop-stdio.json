@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sirrus-leads": {
+      "command": "npm",
+      "args": ["run", "mcp:leads:stdio"],
+      "cwd": "REPLACE_WITH_YOUR_SIRRUS2_REPO_PATH"
+    }
+  }
+}
