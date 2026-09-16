@@ -65,8 +65,9 @@ async function serveRemote(): Promise<void> {
     : createHttpsServer(await loadOrCreateLocalTls(), onRequest);
 
   listener.listen(port, host, () => {
-    const snap = loadLeadsDiskSnapshot();
-    console.error(`Sirrus Leads MCP — open, no auth (${protocol.toUpperCase()})`);
+    void (async () => {
+      const snap = await loadLeadsDiskSnapshot();
+      console.error(`Sirrus Leads MCP — open, no auth (${protocol.toUpperCase()})`);
     console.error(`  URL:    ${url}`);
     if (!useHttp) {
       console.error(`  TLS:    self-signed localhost cert (first visit may need Trust)`);
@@ -85,7 +86,8 @@ async function serveRemote(): Promise<void> {
         null,
         2,
       ),
-    );
+      );
+    })();
   });
 }
 

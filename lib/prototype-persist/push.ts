@@ -67,26 +67,37 @@ async function pushNow(): Promise<void> {
     leadFormLayout: hasLeadForm ? leadFormLayout : undefined,
   };
 
-  try {
-    const res = await fetch("/api/prototype-state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok && res.status !== 501) {
-      console.warn("[prototype-persist] POST failed", res.status);
-    }
-  } catch (e) {
-    console.warn("[prototype-persist] POST error", e);
+  const payload = JSON.stringify(body);
+  const urls = new Set<string>(["/api/prototype-state"]);
+  const syncOrigin = (process.env.NEXT_PUBLIC_MCP_SYNC_ORIGIN || "https://sirrus3.vercel.app").replace(/\/$/, "");
+  if (typeof window !== "undefined" && window.location.origin !== syncOrigin) {
+    urls.add(`${syncOrigin}/api/prototype-state`);
   }
+
+  await Promise.all(
+    [...urls].map(async (url) => {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+        });
+        if (!res.ok && res.status !== 501) {
+          console.warn("[prototype-persist] POST failed", url, res.status);
+        }
+      } catch (e) {
+        console.warn("[prototype-persist] POST error", url, e);
+      }
+    }),
+  );
 }
 
-/** Debounced write of current localStorage snapshot to `data/prototype-state.json` (local dev only). */
+/** Debounced write of current localStorage snapshot to the live store (and local disk in dev). */
 export function schedulePrototypeDiskPush(): void {
   if (typeof window === "undefined") return;
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
     void pushNow();
-  }, 900);
+  }, 400);
 }

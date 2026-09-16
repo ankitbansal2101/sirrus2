@@ -1,72 +1,88 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { loadLivePrototypeState, parsePrototypeState, saveLivePrototypeState } from "@/lib/prototype-persist/live-store";
 import type { PrototypeStateFile } from "@/lib/prototype-persist/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const FILE = join(process.cwd(), "data", "prototype-state.json");
 
-/** Writable repo `data/` is not available on Vercel serverless; disk sync is dev-only. */
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function json(data: unknown, status = 200) {
+  return Response.json(data, { status, headers: CORS });
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 function diskEnabled() {
   const v = process.env.VERCEL;
   return v !== "1" && v !== "true";
 }
 
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return !!x && typeof x === "object" && !Array.isArray(x);
+async function readDisk(): Promise<PrototypeStateFile | null> {
+  if (!diskEnabled()) return null;
+  try {
+    const raw = await readFile(FILE, "utf8");
+    return parsePrototypeState(JSON.parse(raw) as unknown);
+  } catch (e) {
+    const err = e as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") return null;
+    throw e;
+  }
 }
 
-function validateBody(body: unknown): PrototypeStateFile | null {
-  if (!isRecord(body) || body.version !== 1) return null;
-  return {
-    version: 1,
-    savedAt: typeof body.savedAt === "string" ? body.savedAt : new Date().toISOString(),
-    fieldsSchema: body.fieldsSchema ?? null,
-    blueprint: body.blueprint ?? null,
-    blueprintLibrary: body.blueprintLibrary ?? undefined,
-    leads: body.leads ?? null,
-    leadFormLayout: body.leadFormLayout ?? undefined,
-  };
+async function writeDisk(v: PrototypeStateFile): Promise<boolean> {
+  if (!diskEnabled()) return false;
+  try {
+    await mkdir(join(process.cwd(), "data"), { recursive: true });
+    await writeFile(FILE, `${JSON.stringify(v, null, 2)}\n`, "utf8");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function GET() {
-  if (!diskEnabled()) {
-    return Response.json({ snapshot: null as PrototypeStateFile | null, disk: false });
-  }
   try {
-    const raw = await readFile(FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    const v = validateBody(parsed);
-    if (!v) return Response.json({ error: "Invalid snapshot file on disk." }, { status: 500 });
-    return Response.json({ snapshot: v, disk: true });
-  } catch (e) {
-    const err = e as NodeJS.ErrnoException;
-    if (err.code === "ENOENT") return Response.json({ snapshot: null as PrototypeStateFile | null, disk: true });
-    return Response.json({ error: "Could not read prototype snapshot." }, { status: 500 });
+    const live = await loadLivePrototypeState();
+    if (live) return json({ snapshot: live, live: true, disk: diskEnabled() });
+    const disk = await readDisk();
+    return json({ snapshot: disk, live: false, disk: diskEnabled() });
+  } catch {
+    return json({ error: "Could not read prototype snapshot." }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  if (!diskEnabled()) {
-    return Response.json(
-      { error: "Saving to disk is only supported in local dev (not on Vercel serverless)." },
-      { status: 501 },
-    );
-  }
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+    return json({ error: "Invalid JSON body." }, 400);
   }
-  const v = validateBody(body);
-  if (!v) return Response.json({ error: "Expected { version: 1, savedAt?, fieldsSchema?, blueprint?, leads? }." }, { status: 400 });
+  const v = parsePrototypeState(body);
+  if (!v) {
+    return json({ error: "Expected { version: 1, savedAt?, fieldsSchema?, blueprint?, leads? }." }, 400);
+  }
 
-  try {
-    await mkdir(join(process.cwd(), "data"), { recursive: true });
-    await writeFile(FILE, `${JSON.stringify(v, null, 2)}\n`, "utf8");
-    return Response.json({ ok: true });
-  } catch {
-    return Response.json({ error: "Could not write prototype snapshot." }, { status: 500 });
+  const live = await saveLivePrototypeState(v);
+  const disk = await writeDisk(v);
+  if (!live && !disk) {
+    return json(
+      {
+        error:
+          "Live snapshot store is not configured. In Vercel → Storage, create a Blob store, connect it to this project, then redeploy.",
+      },
+      501,
+    );
   }
+  return json({ ok: true, live, disk });
 }

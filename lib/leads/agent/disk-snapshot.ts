@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createDefaultLeadFields, type FieldDefinition } from "@/lib/fields-config/types";
 import type { LeadRecord } from "@/lib/leads/types";
+import { loadLivePrototypeState, saveLivePrototypeState } from "@/lib/prototype-persist/live-store";
 import type { PrototypeStateFile } from "@/lib/prototype-persist/types";
 import bundledSnapshot from "@/data/mcp-snapshot.json";
 
@@ -64,32 +65,48 @@ function vercelHosted() {
   return v === "1" || v === "true";
 }
 
-export function loadLeadsDiskSnapshot(): LeadsDiskSnapshot {
+function readLocalDiskRaw(): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(readFileSync(PROTOTYPE_STATE_FILE, "utf8")) as unknown;
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadLeadsDiskSnapshot(): Promise<LeadsDiskSnapshot> {
+  const live = await loadLivePrototypeState();
+  if (live && Array.isArray(live.leads) && live.leads.length) {
+    return fromRaw(live, "vercel-blob:sirrus/prototype-state.json");
+  }
   if (!vercelHosted()) {
-    try {
-      const raw = readFileSync(PROTOTYPE_STATE_FILE, "utf8");
-      const parsed = JSON.parse(raw) as unknown;
-      const snap = fromRaw(parsed, PROTOTYPE_STATE_FILE);
+    const disk = readLocalDiskRaw();
+    if (disk) {
+      const snap = fromRaw(disk, PROTOTYPE_STATE_FILE);
       if (snap.leads.length) return snap;
-    } catch {
-      /* fall through to bundled snapshot */
     }
   }
   return fromRaw(bundledSnapshot, "data/mcp-snapshot.json");
 }
 
-/** Write updated leads back into the prototype snapshot. Returns false on Vercel (read-only). */
-export function saveLeadsDiskSnapshot(leads: LeadRecord[]): boolean {
+function writeLocalDisk(next: PrototypeStateFile): boolean {
   if (vercelHosted()) return false;
-  let previous: Record<string, unknown> = {};
   try {
-    const raw = readFileSync(PROTOTYPE_STATE_FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (isRecord(parsed)) previous = parsed;
+    mkdirSync(dirname(PROTOTYPE_STATE_FILE), { recursive: true });
+    writeFileSync(PROTOTYPE_STATE_FILE, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    return true;
   } catch {
-    previous = { version: 1, fieldsSchema: createDefaultLeadFields() };
+    return false;
   }
+}
 
+/** Persist updated leads to the live store (and local disk in dev). */
+export async function saveLeadsDiskSnapshot(leads: LeadRecord[]): Promise<boolean> {
+  const live = await loadLivePrototypeState();
+  const previous = live ?? readLocalDiskRaw() ?? {
+    version: 1,
+    fieldsSchema: createDefaultLeadFields(),
+  };
   const next: PrototypeStateFile = {
     version: 1,
     savedAt: new Date().toISOString(),
@@ -99,12 +116,7 @@ export function saveLeadsDiskSnapshot(leads: LeadRecord[]): boolean {
     leads,
     leadFormLayout: previous.leadFormLayout,
   };
-
-  try {
-    mkdirSync(dirname(PROTOTYPE_STATE_FILE), { recursive: true });
-    writeFileSync(PROTOTYPE_STATE_FILE, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-    return true;
-  } catch {
-    return false;
-  }
+  const savedLive = await saveLivePrototypeState(next);
+  const savedDisk = writeLocalDisk(next);
+  return savedLive || savedDisk;
 }

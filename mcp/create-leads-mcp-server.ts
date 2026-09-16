@@ -22,7 +22,7 @@ export function createLeadsMcpServer(): McpServer {
     { name: "sirrus-leads", version: "1.0.0" },
     {
       instructions:
-        "Query and update Sirrus Manage Leads data. Always call lead_query for counts/lists/breakdowns — never guess. Use list_lead_fields for the field catalog. Use lead_update only when the user asks to change a lead.",
+        "Query and update Sirrus Manage Leads data. Always call lead_query for counts/lists/breakdowns — never guess. This is the live snapshot from the Sirrus app, not a frozen copy. Use list_lead_fields for the field catalog. Use lead_update only when the user asks to change a lead.",
     },
   );
 
@@ -35,7 +35,7 @@ export function createLeadsMcpServer(): McpServer {
       mimeType: "application/json",
     },
     async () => {
-      const snap = loadLeadsDiskSnapshot();
+      const snap = await loadLeadsDiskSnapshot();
       return {
         contents: [
           {
@@ -63,7 +63,7 @@ export function createLeadsMcpServer(): McpServer {
       description: "Return the lead field catalog (apiKey, label, type, picklist options) and how many leads are loaded.",
     },
     async () => {
-      const snap = loadLeadsDiskSnapshot();
+      const snap = await loadLeadsDiskSnapshot();
       return jsonResult({
         savedAt: snap.savedAt,
         path: snap.path,
@@ -88,7 +88,7 @@ export function createLeadsMcpServer(): McpServer {
       }),
     },
     async (args) => {
-      const snap = loadLeadsDiskSnapshot();
+      const snap = await loadLeadsDiskSnapshot();
       const result = queryLeads(parseLeadQueryInput(args), snap.leads, snap.fields);
       return jsonResult(result);
     },
@@ -115,11 +115,11 @@ export function createLeadsMcpServer(): McpServer {
       }),
     },
     async (args) => {
-      const snap = loadLeadsDiskSnapshot();
+      const snap = await loadLeadsDiskSnapshot();
       const result = updateLeads(parseLeadUpdateInput(args), snap.leads, snap.fields);
       let persisted = false;
       if (result.success && result.changed && result.leads) {
-        persisted = saveLeadsDiskSnapshot(result.leads);
+        persisted = await saveLeadsDiskSnapshot(result.leads);
       }
       return jsonResult({
         ...result,
