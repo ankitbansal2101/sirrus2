@@ -58,7 +58,9 @@ import {
 import type { LeadRecord } from "@/lib/leads/types";
 import { LeadFiltersDrawer } from "@/components/manage-leads/lead-filters-drawer";
 import { SavedLeadFiltersBar } from "@/components/manage-leads/saved-lead-filters-bar";
+import { AgenticLeadsAssistant } from "@/components/manage-leads/agentic-leads-assistant";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
+import { IconSparkle } from "@/components/icons";
 
 type TabId = "ai-insights" | "lead-journey" | "overview" | "change-stage" | "quotations";
 
@@ -353,6 +355,7 @@ export function ManageLeadsClient() {
   const [appliedLeadFilters, setAppliedLeadFilters] = useState<LeadFilterConfig | null>(null);
   /** When the user applied a filter from the saved bar, we keep its id so the drawer can offer “Update saved filter”. */
   const [appliedSavedFilterSourceId, setAppliedSavedFilterSourceId] = useState<string | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(true);
 
   const reload = useCallback(() => {
     setFields(loadFieldsSchema() ?? createDefaultLeadFields());
@@ -955,6 +958,19 @@ export function ManageLeadsClient() {
           <>
             <button
               type="button"
+              onClick={() => setAiPanelOpen((open) => !open)}
+              aria-pressed={aiPanelOpen}
+              className={`inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold shadow-sm transition ${
+                aiPanelOpen
+                  ? "border-accent bg-accent text-white"
+                  : "border-border-soft bg-white text-ink hover:border-accent/40"
+              }`}
+            >
+              <IconSparkle className="size-3.5" />
+              Leads Agent
+            </button>
+            <button
+              type="button"
               className="hidden h-9 min-w-[9rem] max-w-[12rem] cursor-default items-center justify-between rounded-lg border border-border-soft bg-white px-2.5 text-left text-xs font-medium text-ink shadow-sm sm:inline-flex"
               aria-hidden
             >
@@ -995,6 +1011,24 @@ export function ManageLeadsClient() {
         }
       />
 
+      <div className="flex min-h-0 flex-1">
+        <AgenticLeadsAssistant
+          open={aiPanelOpen}
+          onClose={() => setAiPanelOpen(false)}
+          leads={leads}
+          fields={fields}
+          selectedLeadId={selectedId}
+          onLeadsUpdated={(next) => {
+            if (!saveLeads(next)) {
+              setBanner("Could not save lead updates.");
+              window.setTimeout(() => setBanner(null), 3200);
+              return;
+            }
+            setLeads(next);
+            setBanner("Leads updated by the AI agent.");
+            window.setTimeout(() => setBanner(null), 3200);
+          }}
+        />
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col px-3 pb-4 pt-1 sm:px-4">
         <div className="shrink-0 pt-1">
           <div className="w-full overflow-x-auto overflow-y-hidden">
@@ -1930,7 +1964,9 @@ export function ManageLeadsClient() {
 
                     {tab === "ai-insights" || tab === "lead-journey" || tab === "quotations" ? (
                       <div className="rounded-b-2xl rounded-tr-2xl bg-[#fafafa] p-10 text-center text-sm text-[#7e7a95]">
-                        {tab === "ai-insights" ? "AI Insights is not part of this prototype." : null}
+                        {tab === "ai-insights"
+                          ? "Use the Leads Agent panel to ask about this list or update a lead."
+                          : null}
                         {tab === "lead-journey" ? "Lead Journey is not part of this prototype." : null}
                         {tab === "quotations" ? "Quotations is not part of this prototype." : null}
                       </div>
@@ -2026,6 +2062,7 @@ export function ManageLeadsClient() {
           setAppliedSavedFilterSourceId(null);
         }}
       />
+      </div>
     </div>
   );
 }

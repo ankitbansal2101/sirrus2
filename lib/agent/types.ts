@@ -2,6 +2,7 @@ import type { BlueprintDocument } from "@/lib/blueprint/types";
 import type { BlueprintValidationResult } from "@/lib/blueprint/validator/validate-blueprint";
 import type { SirrusMetadata } from "@/lib/blueprint/metadata/sirrus-metadata";
 import type { FieldDefinition } from "@/lib/fields-config/types";
+import type { LeadRecord } from "@/lib/leads/types";
 
 export type AgentChatMessage = {
   role: "user" | "assistant";
@@ -29,6 +30,22 @@ export type BuilderAgentResult = {
   validation: BlueprintValidationResult | null;
   changed: boolean;
   summary?: string;
+};
+
+export type LeadsAgentRequest = {
+  messages: AgentChatMessage[];
+  leads: LeadRecord[];
+  fieldDefinitions: FieldDefinition[];
+  selectedLeadId?: string | null;
+};
+
+export type LeadsAgentResult = {
+  assistantMessage: string;
+  traces: AgentTraceStep[];
+  leads: LeadRecord[] | null;
+  changed: boolean;
+  summary?: string;
+  matchedCount?: number;
 };
 
 /** Future Sirrus configuration tools — only `blueprint_builder` is registered in this prototype. */

@@ -2,11 +2,14 @@ import type { BlueprintBuilderInput } from "@/lib/blueprint/builder/build-bluepr
 import type { SirrusMetadata } from "@/lib/blueprint/metadata/sirrus-metadata";
 import type { BlueprintDocument } from "@/lib/blueprint/types";
 import type { FieldDefinition } from "@/lib/fields-config/types";
+import type { LeadRecord } from "@/lib/leads/types";
 
 export type ToolExecuteContext = {
-  metadata: SirrusMetadata;
-  currentBlueprint: BlueprintDocument | null;
+  metadata?: SirrusMetadata;
+  currentBlueprint?: BlueprintDocument | null;
   fieldDefinitions?: FieldDefinition[];
+  leads?: LeadRecord[];
+  selectedLeadId?: string | null;
 };
 
 export type OpenAIToolDefinition = {

@@ -13,9 +13,18 @@ export const blueprintBuilderTool: RegisteredTool = {
   inputSchema: BLUEPRINT_BUILDER_INPUT_SCHEMA,
   execute: (input: unknown, ctx: ToolExecuteContext) => {
     const parsed = parseBlueprintBuilderInput(input);
+    if (!ctx.metadata) {
+      return {
+        success: false,
+        operation: "create",
+        blueprint: null,
+        changed: false,
+        validation: { valid: false, errors: [{ code: "no_metadata", message: "Metadata is required." }], warnings: [] },
+      };
+    }
     return buildBlueprint(parsed, {
       metadata: ctx.metadata,
-      currentBlueprint: ctx.currentBlueprint,
+      currentBlueprint: ctx.currentBlueprint ?? null,
       fieldDefinitions: ctx.fieldDefinitions,
     });
   },
