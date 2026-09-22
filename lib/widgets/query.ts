@@ -62,11 +62,12 @@ export function runWidgetQuery(ws: CrmWorkspace, widget: MarketplaceWidget): Wid
   const records = "records" in result && result.records ? result.records : [];
   const keys = q.listFieldKeys?.length ? q.listFieldKeys : undefined;
   const rows = records.map((r) => {
-    const src = { name: r.name, displayId: r.displayId, ...r.values };
+    const src: Record<string, string> = { name: r.name, displayId: r.displayId, ...r.values };
     if (!keys) return asRow(src);
     const slim: Record<string, string> = { name: r.name, displayId: r.displayId };
     for (const k of keys) {
-      if (src[k] != null) slim[k] = String(src[k]);
+      const value = src[k];
+      if (value != null) slim[k] = String(value);
     }
     return slim;
   });
