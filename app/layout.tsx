@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Instrument_Sans, Newsreader } from "next/font/google";
+import { CrmProvider } from "@/components/crm/crm-provider";
 import { PrototypeDiskGate } from "@/components/prototype-disk-gate";
 import "./globals.css";
 
-const outfit = Outfit({
+const sans = Instrument_Sans({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-sans-ui",
   display: "swap",
 });
 
+const display = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "sirus.ai — Settings",
-  description: "Settings",
+  title: "Sirus — CRM",
+  description: "A production CRM workspace for any industry.",
 };
 
 export default function RootLayout({
@@ -21,8 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} font-sans antialiased`}>
-        <PrototypeDiskGate>{children}</PrototypeDiskGate>
+      <body className={`${sans.variable} ${display.variable} font-sans antialiased`}>
+        <PrototypeDiskGate>
+          <CrmProvider>{children}</CrmProvider>
+        </PrototypeDiskGate>
       </body>
     </html>
   );

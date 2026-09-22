@@ -115,6 +115,7 @@ export async function saveLeadsDiskSnapshot(leads: LeadRecord[]): Promise<boolea
     blueprintLibrary: previous.blueprintLibrary,
     leads,
     leadFormLayout: previous.leadFormLayout,
+    crmWorkspace: previous.crmWorkspace,
   };
   const savedLive = await saveLivePrototypeState(next);
   const savedDisk = writeLocalDisk(next);

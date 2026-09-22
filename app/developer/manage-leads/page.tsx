@@ -1,24 +1,23 @@
-import { Suspense } from "react";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { ManageLeadsClient } from "@/components/manage-leads/manage-leads-client";
+import { useCrm } from "@/components/crm/crm-provider";
 
-export const metadata = {
-  title: "Manage leads — sirus.ai",
-  description: "Lead list and blueprint-aware stage changes",
-};
+export default function ManageLeadsRedirect() {
+  const { workspace, ready } = useCrm();
+  const router = useRouter();
 
-export default function ManageLeadsPage() {
+  useEffect(() => {
+    if (!ready) return;
+    const leads = workspace?.modules.find((m) => m.apiKey === "leads") ?? workspace?.modules[0];
+    router.replace(leads ? `/crm/modules/${leads.id}` : "/developer/lead-settings/modules-configurator");
+  }, [ready, workspace, router]);
+
   return (
     <AppShell>
-      <Suspense
-        fallback={
-          <div className="flex min-h-0 flex-1 items-center justify-center bg-canvas p-6 text-xs text-muted">
-            Loading manage leads…
-          </div>
-        }
-      >
-        <ManageLeadsClient />
-      </Suspense>
+      <div className="flex flex-1 items-center justify-center bg-canvas text-sm text-muted">Opening listing…</div>
     </AppShell>
   );
 }

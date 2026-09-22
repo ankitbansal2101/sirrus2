@@ -29,6 +29,7 @@ type Props = {
   onDragOverCanvas: (e: React.DragEvent) => void;
   onDropCanvas: (e: React.DragEvent) => void;
   onDragLeaveCanvas: (e: React.DragEvent) => void;
+  heading?: string;
 };
 
 export function FieldCanvas({
@@ -40,6 +41,7 @@ export function FieldCanvas({
   onDragOverCanvas,
   onDropCanvas,
   onDragLeaveCanvas,
+  heading = "Lead fields",
 }: Props) {
   const [query, setQuery] = useState("");
   const visibleFields = useMemo(() => {
@@ -67,7 +69,7 @@ export function FieldCanvas({
       <div className="mb-1.5 flex shrink-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-            <h2 className="text-xs font-semibold text-ink">Lead fields</h2>
+            <h2 className="text-xs font-semibold text-ink">{heading}</h2>
             <span className="text-[10px] text-muted">
               {fields.length} total
               {query.trim() && visibleFields.length !== fields.length

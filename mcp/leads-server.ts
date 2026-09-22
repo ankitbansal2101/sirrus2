@@ -2,7 +2,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { createServer as createHttpsServer } from "node:https";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { loadLeadsDiskSnapshot } from "@/lib/leads/agent/disk-snapshot";
+import { loadMcpWorkspace } from "@/lib/crm/mcp-snapshot";
 import { createLeadsMcpServer } from "./create-leads-mcp-server";
 import { loadOrCreateLocalTls } from "./local-tls";
 
@@ -66,13 +66,15 @@ async function serveRemote(): Promise<void> {
 
   listener.listen(port, host, () => {
     void (async () => {
-      const snap = await loadLeadsDiskSnapshot();
-      console.error(`Sirrus Leads MCP — open, no auth (${protocol.toUpperCase()})`);
+      const snap = await loadMcpWorkspace();
+      const modules = snap.workspace.modules.map((m) => `${m.pluralLabel} (${m.records.length})`).join(", ") || "none";
+      console.error(`Sirrus CRM MCP — open, no auth (${protocol.toUpperCase()})`);
     console.error(`  URL:    ${url}`);
     if (!useHttp) {
       console.error(`  TLS:    self-signed localhost cert (first visit may need Trust)`);
     }
-    console.error(`  Leads:  ${snap.leads.length} (from ${snap.path})`);
+    console.error(`  Source: ${snap.source} · ${snap.path}`);
+    console.error(`  Modules: ${modules}`);
     console.error(`  Claude Desktop remote connector:`);
     console.error(
       JSON.stringify(

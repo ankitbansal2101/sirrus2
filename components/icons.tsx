@@ -47,6 +47,17 @@ export function IconChart(props: IconProps) {
   );
 }
 
+export function IconWidget(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M3.5 8.5h17" />
+      <path d="M6.5 6.5h2M10 6.5h1.5" strokeLinecap="round" />
+      <rect x="6.5" y="11" width="11" height="5.5" rx="1" />
+    </svg>
+  );
+}
+
 export function IconUsers(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
@@ -212,6 +223,69 @@ export function IconTrash(props: IconProps) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
       <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 7l1 14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-14" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconPencil(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M4 16.5V20h3.5L18.8 8.7a1.5 1.5 0 0 0 0-2.1L17.4 5.2a1.5 1.5 0 0 0-2.1 0L4 16.5Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconSave(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M5 5h11.5L19 7.5V19H5V5Z" strokeLinejoin="round" />
+      <path d="M8 5v5h8V5M8 19v-6h8v6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconPhone(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path
+        d="M7.2 3.8h2.5l1 3.2-1.6 1.1a11 11 0 0 0 5.8 5.8l1.1-1.6 3.2 1v2.5c0 .8-.7 1.5-1.5 1.5C10.4 17.3 6.7 13.6 6.7 5.3c0-.8.7-1.5 1.5-1.5Z"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconCalendar(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="4" y="5.5" width="16" height="14" rx="1.5" />
+      <path d="M8 3.5v4M16 3.5v4M4 10h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconFilter(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconColumns(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="4" y="5" width="5" height="14" rx="1" />
+      <rect x="10.5" y="5" width="4" height="14" rx="1" />
+      <rect x="16" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
+export function IconStar(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="m12 4 2.2 5.3 5.8.5-4.4 3.8 1.3 5.6L12 16.4 7.1 19.2l1.3-5.6L4 9.8l5.8-.5L12 4Z" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -3,6 +3,7 @@ import type { SirrusMetadata } from "@/lib/blueprint/metadata/sirrus-metadata";
 import type { BlueprintDocument } from "@/lib/blueprint/types";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 import type { LeadRecord } from "@/lib/leads/types";
+import type { CrmWorkspace } from "@/lib/crm/types";
 
 export type ToolExecuteContext = {
   metadata?: SirrusMetadata;
@@ -10,6 +11,7 @@ export type ToolExecuteContext = {
   fieldDefinitions?: FieldDefinition[];
   leads?: LeadRecord[];
   selectedLeadId?: string | null;
+  workspace?: CrmWorkspace;
 };
 
 export type OpenAIToolDefinition = {

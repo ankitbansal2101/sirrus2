@@ -17,6 +17,7 @@ export function parsePrototypeState(body: unknown): PrototypeStateFile | null {
     blueprintLibrary: body.blueprintLibrary ?? undefined,
     leads: body.leads ?? null,
     leadFormLayout: body.leadFormLayout ?? undefined,
+    crmWorkspace: body.crmWorkspace ?? undefined,
   };
 }
 

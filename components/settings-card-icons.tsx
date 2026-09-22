@@ -91,6 +91,28 @@ export function IconFieldsConfigurator({ className, ...p }: P) {
   );
 }
 
+export function IconAgents({ className, ...p }: P) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" {...p}>
+      <circle cx="20" cy="14" r="6" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M8 32c1.5-6 6-9 12-9s10.5 3 12 9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path d="M28 8.5 29.2 11.2 32 12.2 29.2 13.2 28 16 26.8 13.2 24 12.2 26.8 11.2 28 8.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Drag-drop details page / overview canvas. */
+export function IconOverviewLayout({ className, ...p }: P) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" {...p}>
+      <rect x="6" y="8" width="28" height="24" rx="3" stroke="currentColor" strokeWidth="1.75" />
+      <rect x="9" y="12" width="12" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="23" y="12" width="8" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="9" y="22" width="22" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 /** Stages on a canvas with connectors — blueprint / pipeline designer. */
 export function IconBlueprint({ className, ...p }: P) {
   return (
@@ -103,6 +125,18 @@ export function IconBlueprint({ className, ...p }: P) {
       <path d="M28 11h4M28 23h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="34" cy="11" r="2" fill="currentColor" />
       <circle cx="34" cy="23" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Marketplace iframe widget. */
+export function IconMarketplaceWidget({ className, ...p }: P) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" {...p}>
+      <rect x="6" y="8" width="28" height="24" rx="3" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M6 15h28" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M10 12h4M16 12h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="10" y="19" width="20" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }

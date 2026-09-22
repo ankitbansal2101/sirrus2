@@ -1,15 +1,12 @@
-import { AppShell } from "@/components/app-shell";
-import { BlueprintScreen } from "./blueprint-screen";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Blueprint management — sirus.ai",
-  description: "Design lead stage flows, transitions, and automation",
-};
-
-export default function BlueprintConfiguratorPage() {
-  return (
-    <AppShell>
-      <BlueprintScreen />
-    </AppShell>
-  );
+export default async function BlueprintConfiguratorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ module?: string }>;
+}) {
+  const { module } = await searchParams;
+  const q = new URLSearchParams({ pane: "blueprint" });
+  if (module) q.set("module", module);
+  redirect(`/developer/lead-settings/modules-configurator?${q.toString()}`);
 }

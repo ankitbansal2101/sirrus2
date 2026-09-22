@@ -55,23 +55,37 @@ function insertFieldAt(layout: LeadFormLayoutV1, sectionId: string, fieldId: str
   };
 }
 
-export function CustomiseLeadFormClient() {
+export function CustomiseLeadFormClient({
+  fields: fieldsProp,
+  layout: layoutProp,
+  onSaveLayout,
+}: {
+  fields?: FieldDefinition[];
+  layout?: LeadFormLayoutV1;
+  onSaveLayout?: (layout: LeadFormLayoutV1) => boolean;
+} = {}) {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   const [layout, setLayout] = useState<LeadFormLayoutV1 | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
 
   const reload = useCallback(() => {
+    if (fieldsProp?.length) {
+      setFields(fieldsProp);
+      setLayout(sanitizeLeadFormLayout(layoutProp ?? buildDefaultLeadFormLayout(fieldsProp), fieldsProp));
+      return;
+    }
     const f = loadFieldsSchema() ?? createDefaultLeadFields();
     setFields(f);
     setLayout(resolveLeadFormLayout(f));
-  }, []);
+  }, [fieldsProp, layoutProp]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
   useEffect(() => {
+    if (onSaveLayout) return;
     const on = () => reload();
     window.addEventListener(FIELDS_SCHEMA_CHANGED_EVENT, on);
     window.addEventListener(LEAD_FORM_LAYOUT_CHANGED_EVENT, on);
@@ -79,7 +93,7 @@ export function CustomiseLeadFormClient() {
       window.removeEventListener(FIELDS_SCHEMA_CHANGED_EVENT, on);
       window.removeEventListener(LEAD_FORM_LAYOUT_CHANGED_EVENT, on);
     };
-  }, [reload]);
+  }, [reload, onSaveLayout]);
 
   const fieldsById = useMemo(() => new Map(fields.map((x) => [x.id, x])), [fields]);
 
@@ -184,14 +198,15 @@ export function CustomiseLeadFormClient() {
 
   const handleSave = () => {
     if (!layout) return;
-    if (saveLeadFormLayout(layout)) {
+    const ok = onSaveLayout ? onSaveLayout(layout) : saveLeadFormLayout(layout);
+    if (ok) {
       setBanner("Saved create-lead layout to this browser.");
       window.setTimeout(() => setBanner(null), 2800);
     }
   };
 
   const handleResetDefaults = () => {
-    const f = loadFieldsSchema() ?? createDefaultLeadFields();
+    const f = fieldsProp?.length ? fieldsProp : loadFieldsSchema() ?? createDefaultLeadFields();
     const next = buildDefaultLeadFormLayout(f);
     setFields(f);
     commit(sanitizeLeadFormLayout(next, f));
@@ -236,7 +251,7 @@ export function CustomiseLeadFormClient() {
         >
           Reset to default sections
         </button>
-        {loadLeadFormLayoutRaw() ? (
+        {!onSaveLayout && loadLeadFormLayoutRaw() ? (
           <button
             type="button"
             onClick={handleResetSaved}

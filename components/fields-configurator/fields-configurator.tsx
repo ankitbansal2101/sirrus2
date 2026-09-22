@@ -14,8 +14,18 @@ import {
 import { createDefaultLeadFields, createFieldFromDataType } from "@/lib/fields-config/types";
 import type { FieldDataType, FieldDefinition } from "@/lib/fields-config/types";
 
-export function FieldsConfigurator() {
-  const seedFields = useMemo(() => createDefaultLeadFields(), []);
+export function FieldsConfigurator({
+  initialFields,
+  onSaveFields,
+  canvasTitle,
+  allowResetDefaults = true,
+}: {
+  initialFields?: FieldDefinition[];
+  onSaveFields?: (fields: FieldDefinition[]) => boolean;
+  canvasTitle?: string;
+  allowResetDefaults?: boolean;
+} = {}) {
+  const seedFields = useMemo(() => (initialFields?.length ? initialFields : createDefaultLeadFields()), [initialFields]);
   const [fields, setFields] = useState<FieldDefinition[]>(() => seedFields);
   const [selectedId, setSelectedId] = useState<string | null>(() => seedFields[0]?.id ?? null);
   const [propertiesOpen, setPropertiesOpen] = useState(true);
@@ -25,6 +35,11 @@ export function FieldsConfigurator() {
   const draggingPaletteTypeRef = useRef<FieldDataType | null>(null);
 
   const reloadFromStorage = useCallback(() => {
+    if (initialFields?.length) {
+      setFields(initialFields);
+      setSelectedId(initialFields[0]?.id ?? null);
+      return;
+    }
     const loaded = loadFieldsSchema();
     if (loaded?.length) {
       setFields(loaded);
@@ -34,17 +49,18 @@ export function FieldsConfigurator() {
       setFields(next);
       setSelectedId(next[0]?.id ?? null);
     }
-  }, []);
+  }, [initialFields]);
 
   useEffect(() => {
     reloadFromStorage();
   }, [reloadFromStorage]);
 
   useEffect(() => {
+    if (onSaveFields) return;
     const onSchemaChanged = () => reloadFromStorage();
     window.addEventListener(FIELDS_SCHEMA_CHANGED_EVENT, onSchemaChanged);
     return () => window.removeEventListener(FIELDS_SCHEMA_CHANGED_EVENT, onSchemaChanged);
-  }, [reloadFromStorage]);
+  }, [reloadFromStorage, onSaveFields]);
 
   const selected = useMemo(
     () => fields.find((f) => f.id === selectedId) ?? null,
@@ -75,7 +91,8 @@ export function FieldsConfigurator() {
   }, []);
 
   const handleSaveSchema = useCallback(() => {
-    if (saveFieldsSchema(fields)) {
+    const ok = onSaveFields ? onSaveFields(fields) : saveFieldsSchema(fields);
+    if (ok) {
       setSaveBanner("Saved to this browser");
       setPropertiesOpen(false);
       setSelectedId(null);
@@ -83,7 +100,7 @@ export function FieldsConfigurator() {
       setSaveBanner("Could not save (storage unavailable)");
     }
     window.setTimeout(() => setSaveBanner(null), 2800);
-  }, [fields]);
+  }, [fields, onSaveFields]);
 
   const handleClosePanel = useCallback(() => {
     setPropertiesOpen(false);
@@ -135,13 +152,15 @@ export function FieldsConfigurator() {
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 p-1.5 sm:p-2">
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleResetToDefaults}
-            className="rounded-md border border-border-soft bg-white px-2.5 py-1.5 text-[11px] font-medium text-ink shadow-sm hover:bg-zinc-50"
-          >
-            Reset to product defaults
-          </button>
+          {allowResetDefaults ? (
+            <button
+              type="button"
+              onClick={handleResetToDefaults}
+              className="rounded-md border border-border-soft bg-white px-2.5 py-1.5 text-[11px] font-medium text-ink shadow-sm hover:bg-zinc-50"
+            >
+              Reset to product defaults
+            </button>
+          ) : null}
         </div>
         {saveBanner ? (
           <div
@@ -160,6 +179,7 @@ export function FieldsConfigurator() {
           onDragOverCanvas={onDragOverCanvas}
           onDropCanvas={onDropCanvas}
           onDragLeaveCanvas={onDragLeaveCanvas}
+          heading={canvasTitle}
         />
       </div>
       {propertiesOpen ? (

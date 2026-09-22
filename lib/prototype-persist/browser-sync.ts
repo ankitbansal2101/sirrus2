@@ -7,6 +7,7 @@ import type { BlueprintDocument } from "@/lib/blueprint/types";
 import { FIELDS_SCHEMA_CHANGED_EVENT, FIELDS_SCHEMA_STORAGE_KEY } from "@/lib/fields-config/schema-storage";
 import { LEAD_FORM_LAYOUT_CHANGED_EVENT, LEAD_FORM_LAYOUT_STORAGE_KEY } from "@/lib/lead-form-layout/storage";
 import { LEADS_CHANGED_EVENT, LEADS_STORAGE_KEY } from "@/lib/leads/storage";
+import { CRM_CHANGED_EVENT, CRM_WORKSPACE_KEY } from "@/lib/crm/storage";
 import type { PrototypeStateFile } from "@/lib/prototype-persist/types";
 
 export const LIVE_SAVED_AT_KEY = "sirrus2_live_saved_at";
@@ -39,6 +40,7 @@ export function applyPrototypeSnapshotToLocalStorage(snap: PrototypeStateFile): 
   let touchedBlueprint = false;
   let touchedLeads = false;
   let touchedLeadForm = false;
+  let touchedCrm = false;
 
   if (isNonEmptyArray(snap.fieldsSchema)) {
     localStorage.setItem(FIELDS_SCHEMA_STORAGE_KEY, JSON.stringify(snap.fieldsSchema));
@@ -66,11 +68,16 @@ export function applyPrototypeSnapshotToLocalStorage(snap: PrototypeStateFile): 
     localStorage.setItem(LEAD_FORM_LAYOUT_STORAGE_KEY, JSON.stringify(snap.leadFormLayout));
     touchedLeadForm = true;
   }
+  if (snap.crmWorkspace && typeof snap.crmWorkspace === "object") {
+    localStorage.setItem(CRM_WORKSPACE_KEY, JSON.stringify(snap.crmWorkspace));
+    touchedCrm = true;
+  }
 
   if (touchedFields) window.dispatchEvent(new Event(FIELDS_SCHEMA_CHANGED_EVENT));
   if (touchedBlueprint) window.dispatchEvent(new Event(BLUEPRINT_CHANGED_EVENT));
   if (touchedLeads) window.dispatchEvent(new Event(LEADS_CHANGED_EVENT));
   if (touchedLeadForm) window.dispatchEvent(new Event(LEAD_FORM_LAYOUT_CHANGED_EVENT));
+  if (touchedCrm) window.dispatchEvent(new Event(CRM_CHANGED_EVENT));
 }
 
 function readSavedAt(): string {

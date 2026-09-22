@@ -6,6 +6,7 @@ const K_BLUEPRINT = "sirrus2_blueprint_v1";
 const K_BLUEPRINT_LIBRARY = "sirrus2_blueprint_library_v2";
 const K_LEADS = "sirrus2_leads_v1";
 const K_LEAD_FORM_LAYOUT = "sirrus2_lead_form_layout_v1";
+const K_CRM = "sirrus2_crm_workspace_v1";
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -47,6 +48,7 @@ async function pushNow(): Promise<void> {
   const blueprint = parseJson(readLs(K_BLUEPRINT));
   const leads = parseJson(readLs(K_LEADS));
   const leadFormLayout = parseJson(readLs(K_LEAD_FORM_LAYOUT));
+  const crmWorkspace = parseJson(readLs(K_CRM));
 
   const hasFields = Array.isArray(fieldsSchema) && fieldsSchema.length > 0;
   const hasBp = isLibraryShape(blueprintLibrary) || hasBlueprintShape(blueprint);
@@ -55,7 +57,8 @@ async function pushNow(): Promise<void> {
     leadFormLayout &&
     typeof leadFormLayout === "object" &&
     (leadFormLayout as { version?: unknown }).version === 1;
-  if (!hasFields && !hasBp && !hasLeads && !hasLeadForm) return;
+  const hasCrm = !!crmWorkspace && typeof crmWorkspace === "object";
+  if (!hasFields && !hasBp && !hasLeads && !hasLeadForm && !hasCrm) return;
 
   const body: PrototypeStateFile = {
     version: 1,
@@ -65,6 +68,7 @@ async function pushNow(): Promise<void> {
     blueprintLibrary: isLibraryShape(blueprintLibrary) ? blueprintLibrary : undefined,
     leads,
     leadFormLayout: hasLeadForm ? leadFormLayout : undefined,
+    crmWorkspace: hasCrm ? crmWorkspace : undefined,
   };
 
   const payload = JSON.stringify(body);

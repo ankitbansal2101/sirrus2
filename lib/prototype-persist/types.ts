@@ -9,4 +9,6 @@ export type PrototypeStateFile = {
   leads: unknown;
   /** Create-lead section layout (`sirrus2_lead_form_layout_v1`). */
   leadFormLayout?: unknown;
+  /** Configurable CRM workspace (modules, records, overview layouts). */
+  crmWorkspace?: unknown;
 };
