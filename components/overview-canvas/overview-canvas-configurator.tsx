@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { DetailsPageStylePanel } from "@/components/overview-canvas/details-page-style-panel";
 import { OverviewNodeBody } from "@/components/overview-canvas/overview-node-body";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { useCrm } from "@/components/crm/crm-provider";
+import { moduleSlot } from "@/lib/crm/agent-slots";
 import {
   IconChevronDown,
   IconClose,
@@ -193,6 +195,7 @@ export function OverviewCanvasConfigurator({ moduleId }: { moduleId: string }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <PageAgentBar slotKey={moduleSlot(mod.id, "overview")} moduleLabel={mod.pluralLabel} compact />
           <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5c5878]">
             Module
             <span className="rounded-md border border-slate-200/90 bg-white px-1.5 py-1 text-[11px] text-[#16140f]">

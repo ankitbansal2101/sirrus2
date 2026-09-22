@@ -2,11 +2,12 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { CrmAgentPanel } from "@/components/crm/crm-agent-panel";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
+import { moduleSlot } from "@/lib/crm/agent-slots";
 import { RecordEditorModal } from "@/components/crm/record-editor-modal";
 import { OverviewNodeBody } from "@/components/overview-canvas/overview-node-body";
 import { PairAiSummaryStrip } from "@/components/overview-canvas/pair-ai-summary-strip";
-import { IconChevronLeft, IconPencil, IconSparkle } from "@/components/icons";
+import { IconChevronLeft, IconPencil } from "@/components/icons";
 import { insightForRecord } from "@/lib/crm/ai-summary-strip";
 import { dispatchCrmEvent } from "@/lib/crm/dispatch-workflows";
 import { displayFieldValue, fieldById, initialsFromName, recordStageLabel, recordTitle, stagePillStyle } from "@/lib/crm/display";
@@ -25,7 +26,6 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
     [mod],
   );
   const [tab, setTab] = useState<"overview" | "activity" | string>("overview");
-  const [agentOpen, setAgentOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   if (!workspace || !mod || !rec || !canvas) {
@@ -95,10 +95,7 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {mod.stageFieldApiKey ? <StageSelect module={mod} record={rec} onStage={setStage} /> : null}
-            <button type="button" onClick={() => setAgentOpen(true)} className="btn-ghost">
-              <IconSparkle className="size-3.5" />
-              Ask agent
-            </button>
+            <PageAgentBar slotKey={moduleSlot(mod.id, "record")} moduleLabel={mod.label} compact />
             <button type="button" onClick={() => setEditOpen(true)} className="btn-primary">
               <IconPencil className="size-3.5" />
               Edit
@@ -165,14 +162,6 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
       {editOpen ? (
         <RecordEditorModal workspace={workspace} module={mod} record={rec} onClose={() => setEditOpen(false)} onSave={save} />
       ) : null}
-      <CrmAgentPanel
-        open={agentOpen}
-        onClose={() => setAgentOpen(false)}
-        mode={mod.recordAgentId ? "custom" : "records"}
-        customAgentId={mod.recordAgentId ?? null}
-        focusModuleId={mod.id}
-        moduleLabel={mod.label}
-      />
     </div>
   );
 }

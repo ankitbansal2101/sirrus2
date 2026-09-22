@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm } from "@/components/crm/crm-provider";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
+import { globalSlot } from "@/lib/crm/agent-slots";
 import { IconPlus, IconSparkle, IconTrash } from "@/components/icons";
 import { IconMarketplaceWidget } from "@/components/settings-card-icons";
 import type { AgentChatMessage } from "@/lib/agent/types";
@@ -100,14 +102,13 @@ export function WidgetStudio() {
         title="Marketplace widgets"
         description="Pick a module, listing columns, and fields yourself — or ask the agent. Then host the iframe."
         actions={
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="btn-primary text-xs"
-          >
-            <IconPlus className="size-3.5" />
-            New widget
-          </button>
+          <>
+            <PageAgentBar slotKey={globalSlot("widgets")} compact />
+            <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary text-xs">
+              <IconPlus className="size-3.5" />
+              New widget
+            </button>
+          </>
         }
       />
       <main className="page-canvas min-h-0 flex-1 overflow-y-auto px-8 py-8">
@@ -365,6 +366,7 @@ function WidgetEditor({
         }
         actions={
           <>
+            <PageAgentBar slotKey={globalSlot("widgets")} compact />
             <button
               type="button"
               onClick={onDelete}

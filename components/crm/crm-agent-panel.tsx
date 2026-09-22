@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AgentChatMessage, AgentTraceStep, CrmAgentMode, CrmAgentResult } from "@/lib/agent/types";
 import { IconClose, IconSend, IconSparkle, IconTable, IconTool, IconUser } from "@/components/icons";
 import { useCrm } from "@/components/crm/crm-provider";
@@ -88,6 +89,7 @@ export function CrmAgentPanel({
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
   const custom = customAgentId ? workspace?.agents?.find((a) => a.id === customAgentId) : undefined;
   const resolvedMode: CrmAgentMode = custom ? "custom" : mode;
   const copy = custom
@@ -103,10 +105,23 @@ export function CrmAgentPanel({
     : copyFor(resolvedMode, moduleLabel);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [entries, busy]);
 
-  if (!open || !workspace) return null;
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!open || !workspace || !mounted) return null;
 
   const sendText = async (text: string) => {
     const content = text.trim();
@@ -164,10 +179,10 @@ export function CrmAgentPanel({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-[#12100c]/35 backdrop-blur-[2px]">
-      <button type="button" className="flex-1 cursor-default" aria-label="Close agent" onClick={onClose} />
-      <aside className="flex h-full w-[min(100%,26rem)] flex-col border-l border-border-soft bg-surface shadow-[-24px_0_60px_-28px_rgba(22,20,15,0.4)]">
+  const panel = (
+    <div className="fixed inset-0 z-[100] flex h-svh max-h-svh justify-end bg-[#12100c]/35 backdrop-blur-[2px]">
+      <button type="button" className="min-h-0 flex-1 cursor-default" aria-label="Close agent" onClick={onClose} />
+      <aside className="flex h-svh max-h-svh min-h-0 w-[min(100%,26rem)] flex-col border-l border-border-soft bg-surface shadow-[-24px_0_60px_-28px_rgba(22,20,15,0.4)]">
         <header className="shrink-0 border-b border-border-soft px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-2xl bg-ink text-white">
@@ -280,4 +295,6 @@ export function CrmAgentPanel({
       </aside>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }

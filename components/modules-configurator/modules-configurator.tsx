@@ -10,7 +10,9 @@ import { BlueprintSaveToolbar } from "@/components/blueprint-configurator/bluepr
 import { BlueprintWorkspaceProvider } from "@/components/blueprint-configurator/blueprint-workspace-context";
 import { OverviewCanvasConfigurator } from "@/components/overview-canvas/overview-canvas-configurator";
 import { useCrm } from "@/components/crm/crm-provider";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
+import { moduleSlot, type ModuleStudioSurface } from "@/lib/crm/agent-slots";
 import {
   IconArrowUpRight,
   IconChart,
@@ -150,6 +152,13 @@ export function ModulesConfigurator() {
           backHref={`${pathname}?module=${selected.id}`}
           title={`${selected.pluralLabel} · ${paneMeta.label}`}
           description="Changes apply only to this module. Records stay on the left rail."
+          actions={
+            <PageAgentBar
+              slotKey={moduleSlot(selected.id, pane as ModuleStudioSurface)}
+              moduleLabel={selected.pluralLabel}
+              compact
+            />
+          }
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
           {pane === "fields" ? (

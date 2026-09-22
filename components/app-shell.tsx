@@ -20,6 +20,8 @@ import {
 } from "@/components/icons";
 import { CrmAgentPanel } from "@/components/crm/crm-agent-panel";
 import { useCrm } from "@/components/crm/crm-provider";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
+import { globalSlot, resolveSlotAgent } from "@/lib/crm/agent-slots";
 import type { CrmModuleIcon } from "@/lib/crm/types";
 
 const iconMap: Record<CrmModuleIcon, typeof IconTable> = {
@@ -46,12 +48,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [universalOpen, setUniversalOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const modules = workspace?.modules ?? [];
+  const workspaceAgent = workspace ? resolveSlotAgent(workspace, globalSlot("workspace")) : null;
   const firstModuleHref = modules[0] ? `/crm/modules/${modules[0].id}` : "/";
   const settingsActive =
     pathname === "/" ||
     pathname.startsWith("/developer") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/settings");
+  const pageHasOwnAgentBar =
+    pathname.startsWith("/crm/modules") ||
+    pathname.startsWith("/crm/charts") ||
+    pathname.startsWith("/crm/widgets") ||
+    pathname.startsWith("/developer/lead-settings/widgets");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -100,6 +108,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <IconBell className="size-5" />
             </button>
+            {modules.length > 0 && workspace && !pageHasOwnAgentBar ? (
+              <div className="hidden lg:block">
+                <PageAgentBar slotKey={globalSlot("workspace")} compact />
+              </div>
+            ) : null}
             <div className="flex max-w-[15rem] items-center gap-2 rounded-full border border-border-soft bg-[#f7f1e6] py-1 pl-1 pr-3">
               <div className="avatar size-7 bg-ink text-[10px] text-white">
                 {(workspace?.orgName ?? "S").slice(0, 1).toUpperCase()}
@@ -192,8 +205,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CrmAgentPanel
         open={universalOpen}
         onClose={() => setUniversalOpen(false)}
-        mode={workspace?.workspaceAgentId ? "custom" : "universal"}
-        customAgentId={workspace?.workspaceAgentId ?? null}
+        mode={workspaceAgent?.mode ?? "universal"}
+        customAgentId={workspaceAgent?.customAgentId ?? null}
       />
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
     </div>

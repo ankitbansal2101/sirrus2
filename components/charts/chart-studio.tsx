@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChartView } from "@/components/charts/chart-view";
 import { useCrm } from "@/components/crm/crm-provider";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
+import { globalSlot } from "@/lib/crm/agent-slots";
 import { IconPlus, IconSparkle, IconTrash } from "@/components/icons";
 import { IconReports } from "@/components/settings-card-icons";
 import type { AgentChatMessage } from "@/lib/agent/types";
@@ -150,6 +152,7 @@ export function ChartStudio() {
         backHref="/"
         title="Charts"
         description="Ask for what you want — module, chart type, dimensions, and measures — or configure them yourself."
+        actions={<PageAgentBar slotKey={globalSlot("charts")} compact />}
       />
       <main className="page-canvas min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
         <div className="mx-auto max-w-[1200px] space-y-6">
@@ -282,14 +285,17 @@ function ChartEditor({
         title={chart.name}
         description={`${result.matched} of ${result.recordCount} ${result.moduleLabel || "records"} · ${result.dimensionLabel}`}
         actions={
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink"
-          >
-            <IconTrash className="size-3.5" />
-            Delete
-          </button>
+          <>
+            <PageAgentBar slotKey={globalSlot("charts")} compact />
+            <button
+              type="button"
+              onClick={onDelete}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink"
+            >
+              <IconTrash className="size-3.5" />
+              Delete
+            </button>
+          </>
         }
       />
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">

@@ -98,6 +98,8 @@ export type CrmWorkspace = {
   agents?: CrmCustomAgent[];
   /** Custom agent used by the left-rail workspace agent. */
   workspaceAgentId?: string | null;
+  /** Per-screen agent overrides. Key = agent slot id; value = custom agent id or null (built-in default). */
+  agentPlacements?: Record<string, string | null>;
   /** Trigger → agent → actions (HubSpot/Monday-style automations). */
   workflows?: AgentWorkflow[];
   /** AI-built iframe widgets for marketplace hosting. */

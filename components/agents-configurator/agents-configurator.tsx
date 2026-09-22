@@ -18,11 +18,15 @@ import {
   findAgent,
   findWorkflow,
   removeAgent,
-  setModuleListingAgent,
-  setModuleRecordAgent,
-  setWorkspaceAgent,
   updateAgent,
 } from "@/lib/crm/ops";
+import {
+  allSlotDefs,
+  getSlotAssignment,
+  resolveSlotAgent,
+  setSlotAssignment,
+  slotsUsingAgent,
+} from "@/lib/crm/agent-slots";
 import { workflowsOf, triggerMeta } from "@/lib/crm/workflows";
 import {
   CRM_AGENT_TOOL_CHOICES,
@@ -48,6 +52,7 @@ export function AgentsConfigurator() {
   const inhouse = inhouseId ? findInhouseAgent(inhouseId) : undefined;
   const [createOpen, setCreateOpen] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
+  const [publishNotice, setPublishNotice] = useState<string | null>(null);
 
   const setQuery = (next: { agent?: string | null; inhouse?: string | null; workflow?: string | null; tab?: string | null }) => {
     const q = new URLSearchParams();
@@ -94,14 +99,35 @@ export function AgentsConfigurator() {
           title={selected.name}
           description={selected.handoffDescription || "OpenAI Agent-style config: instructions, tools, and model settings."}
           actions={
-            <button
-              type="button"
-              onClick={() => setTestOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-white"
-            >
-              <IconSparkle className="size-3.5" />
-              Test agent
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {publishNotice ? (
+                <span className="max-w-[14rem] truncate text-[11px] font-medium text-accent sm:max-w-none">{publishNotice}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setTestOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-white px-3.5 py-1.5 text-xs font-semibold text-ink"
+              >
+                Try in sandbox
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!workspace || !selected) return;
+                  const screens = slotsUsingAgent(workspace, selected.id);
+                  setPublishNotice(
+                    screens.length
+                      ? `Published on ${screens.length} screen${screens.length === 1 ? "" : "s"}. Open those pages and click Ask.`
+                      : "Published. Assign screens below (or use each page’s Agent dropdown), then click Ask there.",
+                  );
+                  window.setTimeout(() => setPublishNotice(null), 8000);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-white"
+              >
+                <IconSparkle className="size-3.5" />
+                Publish agent
+              </button>
+            </div>
           }
         />
         <AgentEditor
@@ -232,7 +258,7 @@ function AgentsHome({
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">On-call agents</h2>
           <p className="mt-1 mb-5 text-sm text-muted">
-            People chat with these. Place one on a listing, a record overview, or the workspace sparkle — like HubSpot’s inbox assistant.
+            People chat with these. Open an agent and choose which screens it runs on, or pick the agent from any screen’s Agent dropdown.
           </p>
           {onCall.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-border-soft bg-surface px-8 py-10 text-center">
@@ -394,6 +420,7 @@ function AgentsHome({
 }
 
 function AgentCard({ agent, onOpen }: { agent: CrmCustomAgent; onOpen: () => void }) {
+  const { workspace } = useCrm();
   const kind = agent.kind ?? "on_call";
   return (
     <button
@@ -417,6 +444,9 @@ function AgentCard({ agent, onOpen }: { agent: CrmCustomAgent; onOpen: () => voi
       <p className="mt-4 text-[11px] text-muted">
         {agent.tools.length} tool{agent.tools.length === 1 ? "" : "s"}
         {agent.model ? ` · ${agent.model}` : " · default model"}
+        {workspace && (agent.kind ?? "on_call") === "on_call"
+          ? ` · ${slotsUsingAgent(workspace, agent.id).length} screen${slotsUsingAgent(workspace, agent.id).length === 1 ? "" : "s"}`
+          : ""}
       </p>
     </button>
   );
@@ -493,6 +523,65 @@ function InhouseDetail({
         </section>
       </div>
     </main>
+  );
+}
+
+const PLACEMENT_GROUPS = ["Workspace", "Module operations", "Module studio", "Studios"] as const;
+
+function AgentScreenPlacements({
+  workspace,
+  agentId,
+  save,
+}: {
+  workspace: CrmWorkspace;
+  agentId: string;
+  save: (next: CrmWorkspace) => void;
+}) {
+  const slots = allSlotDefs(workspace);
+  return (
+    <div className="mt-6 space-y-5">
+      <p className="text-sm text-muted">
+        Choose where this agent is live after you click <strong className="font-semibold text-ink">Publish agent</strong> above. You can
+        also switch agents from the Agent dropdown on each page.
+      </p>
+      {PLACEMENT_GROUPS.map((group) => {
+        const inGroup = slots.filter((s) => s.group === group);
+        if (!inGroup.length) return null;
+        return (
+          <div key={group}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">{group}</p>
+            <ul className="mt-2 max-h-52 space-y-1.5 overflow-y-auto pr-1">
+              {inGroup.map((slot) => {
+                const assigned = getSlotAssignment(workspace, slot.key);
+                const checked = assigned === agentId;
+                const { defaultInhouseName } = resolveSlotAgent(workspace, slot.key);
+                return (
+                  <li key={slot.key}>
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-soft bg-white px-3 py-2.5 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) save(setSlotAssignment(workspace, slot.key, agentId));
+                          else if (assigned === agentId) save(setSlotAssignment(workspace, slot.key, null));
+                        }}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-ink">{slot.label}</span>
+                        <span className="mt-0.5 block text-[11px] leading-snug text-muted">
+                          {slot.hint} · Default: {defaultInhouseName}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -695,15 +784,12 @@ function AgentEditor({
         ) : null}
 
         <section className="rounded-[24px] border border-border-soft bg-surface p-6 shadow-md">
-          <h2 className="text-base font-semibold text-ink">Where this agent lives</h2>
-          <p className="mt-1 text-sm text-muted">
-            On-call agents sit in chat (listing, record, workspace). Automation agents run from workflows — they are not a chat panel.
-          </p>
+          <h2 className="text-base font-semibold text-ink">Agent type</h2>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {(
               [
-                ["on_call", "On-call (chat)", "People talk to it. Attach it below."],
-                ["automation", "Automation", "Triggered by record created, stage change, or simulated call/chat."],
+                ["on_call", "On-call (chat)", "People talk to it on CRM screens."],
+                ["automation", "Automation", "Runs from workflows — not a chat panel."],
               ] as const
             ).map(([id, label, hint]) => (
               <button
@@ -720,54 +806,7 @@ function AgentEditor({
             ))}
           </div>
           {(agent.kind ?? "on_call") === "on_call" ? (
-            <>
-              <label className="mt-4 flex items-center gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  checked={workspace.workspaceAgentId === agent.id}
-                  onChange={(e) => save(setWorkspaceAgent(workspace, e.target.checked ? agent.id : null))}
-                />
-                Workspace chat (left-rail sparkle)
-              </label>
-              {workspace.modules.length > 0 ? (
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <p className="text-xs font-medium text-muted">Listing pages</p>
-                    <ul className="mt-2 space-y-2">
-                      {workspace.modules.map((m) => (
-                        <li key={m.id}>
-                          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border-soft bg-white px-3 py-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={m.listingAgentId === agent.id}
-                              onChange={(e) => save(setModuleListingAgent(workspace, m.id, e.target.checked ? agent.id : null))}
-                            />
-                            {m.pluralLabel}
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted">Record overview</p>
-                    <ul className="mt-2 space-y-2">
-                      {workspace.modules.map((m) => (
-                        <li key={`rec-${m.id}`}>
-                          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border-soft bg-white px-3 py-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={m.recordAgentId === agent.id}
-                              onChange={(e) => save(setModuleRecordAgent(workspace, m.id, e.target.checked ? agent.id : null))}
-                            />
-                            {m.label} details
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ) : null}
-            </>
+            <AgentScreenPlacements workspace={workspace} agentId={agent.id} save={save} />
           ) : (
             <p className="mt-4 text-sm text-muted">
               Open the Automations tab and add a “Run agent” step that points at this agent. Example: When lead created → run this agent → change stage.

@@ -23,7 +23,6 @@ import type {
 } from "@/lib/crm/types";
 import type { OverviewCanvasDocument, OverviewCustomWidgetDef } from "@/lib/crm/overview-canvas";
 import type { LeadFormLayoutV1 } from "@/lib/lead-form-layout/types";
-
 function clone<T>(x: T): T {
   return structuredClone(x);
 }
@@ -436,15 +435,26 @@ export function updateAgent(ws: CrmWorkspace, agentId: string, patch: Partial<Cr
   return next;
 }
 
-export function removeAgent(ws: CrmWorkspace, agentId: string): CrmWorkspace {
+function clearAgentPlacements(ws: CrmWorkspace, agentId: string): CrmWorkspace {
   const next = clone(ws);
-  next.agents = agentsOf(next).filter((a) => a.id !== agentId);
+  const placements = { ...(next.agentPlacements ?? {}) };
+  for (const key of Object.keys(placements)) {
+    if (placements[key] === agentId) placements[key] = null;
+  }
+  next.agentPlacements = placements;
   if (next.workspaceAgentId === agentId) next.workspaceAgentId = null;
   for (const mod of next.modules) {
     if (mod.listingAgentId === agentId) mod.listingAgentId = null;
     if (mod.recordAgentId === agentId) mod.recordAgentId = null;
   }
-  for (const agent of next.agents) {
+  return next;
+}
+
+export function removeAgent(ws: CrmWorkspace, agentId: string): CrmWorkspace {
+  let next = clone(ws);
+  next.agents = agentsOf(next).filter((a) => a.id !== agentId);
+  next = clearAgentPlacements(next, agentId);
+  for (const agent of agentsOf(next)) {
     agent.handoffAgentIds = agent.handoffAgentIds.filter((id) => id !== agentId);
   }
   for (const wf of next.workflows ?? []) {

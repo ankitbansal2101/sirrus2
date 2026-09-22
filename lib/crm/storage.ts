@@ -24,6 +24,7 @@ export function loadCrmWorkspace(): CrmWorkspace | null {
         kind: a.kind === "automation" ? "automation" : "on_call",
       })),
       workspaceAgentId: parsed.workspaceAgentId ?? null,
+      agentPlacements: parsed.agentPlacements ?? {},
       workflows: parsed.workflows ?? [],
       marketplaceWidgets: parsed.marketplaceWidgets ?? [],
       charts: parsed.charts ?? [],

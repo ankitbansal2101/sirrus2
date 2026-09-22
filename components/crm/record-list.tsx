@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { ListColumnPicker } from "@/components/crm/list-column-picker";
 import { ListFiltersPanel } from "@/components/crm/list-filters-panel";
 import { RecordEditorModal } from "@/components/crm/record-editor-modal";
-import { CrmAgentPanel } from "@/components/crm/crm-agent-panel";
+import { PageAgentBar } from "@/components/crm/page-agent-bar";
+import { moduleSlot } from "@/lib/crm/agent-slots";
 import { useCrm } from "@/components/crm/crm-provider";
 import { IconFilter, IconPlus, IconSparkle, IconTrash } from "@/components/icons";
 import {
@@ -40,7 +41,6 @@ export function RecordList({ moduleId }: { moduleId: string }) {
   const [stageTab, setStageTab] = useState("all");
   const [sort, setSort] = useState<ListSortKey>("updated");
   const [createOpen, setCreateOpen] = useState(false);
-  const [agentOpen, setAgentOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [applied, setApplied] = useState<LeadFilterConfig | null>(null);
   const [saved, setSaved] = useState<SavedListFilter[]>([]);
@@ -143,11 +143,8 @@ export function RecordList({ moduleId }: { moduleId: string }) {
               {q || filterCount || stageTab !== "all" ? ` · ${rows.length} in view` : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setAgentOpen(true)} className="btn-ghost">
-              <IconSparkle className="size-3.5" />
-              Agent
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PageAgentBar slotKey={moduleSlot(moduleId, "listing")} moduleLabel={mod.pluralLabel} compact />
             <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary">
               <IconPlus className="size-3.5" />
               New {mod.label.toLowerCase()}
@@ -373,14 +370,6 @@ export function RecordList({ moduleId }: { moduleId: string }) {
       {createOpen ? (
         <RecordEditorModal workspace={workspace} module={mod} onClose={() => setCreateOpen(false)} onSave={save} />
       ) : null}
-      <CrmAgentPanel
-        open={agentOpen}
-        onClose={() => setAgentOpen(false)}
-        mode={mod.listingAgentId ? "custom" : "records"}
-        customAgentId={mod.listingAgentId ?? null}
-        focusModuleId={mod.id}
-        moduleLabel={mod.pluralLabel}
-      />
     </div>
   );
 }
