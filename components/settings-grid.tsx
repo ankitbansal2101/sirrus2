@@ -41,7 +41,7 @@ export function SettingsGrid() {
   const { workspace } = useCrm();
   const modules = workspace?.modules.length ?? 0;
   const records = workspace?.modules.reduce((n, m) => n + m.records.length, 0) ?? 0;
-  const agents = workspace?.agents.length ?? 0;
+  const agents = workspace?.agents?.length ?? 0;
 
   return (
     <main className="page-canvas min-h-0 flex-1 overflow-y-auto px-6 py-10 sm:px-10">
