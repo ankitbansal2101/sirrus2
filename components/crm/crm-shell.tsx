@@ -44,7 +44,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       <header className="shrink-0 border-b border-border-soft bg-surface px-3 py-1.5 sm:px-4">
         <div className="mx-auto flex h-10 max-w-[1600px] items-center justify-between gap-2 sm:h-11 sm:gap-3">
           <Link href="/crm" className="shrink-0 text-base font-semibold tracking-tight text-ink sm:text-[17px]">
-            sirus.ai
+            sirrus.ai
           </Link>
           <div className="hidden min-w-0 flex-1 items-center justify-center sm:flex">
             {workspace ? (

@@ -31,11 +31,12 @@ import {
   IconLeadForm,
   IconOverviewLayout,
 } from "@/components/settings-card-icons";
-import { crmBlueprintFromDocument, documentFromModule } from "@/lib/crm/blueprint-bridge";
+import { BlueprintFieldsProvider } from "@/components/blueprint-configurator/blueprint-fields-context";
+import { crmBlueprintFromDocument } from "@/lib/crm/blueprint-bridge";
+import { ensureModuleBlueprint, moduleBlueprintId } from "@/lib/crm/module-blueprint";
 import {
   addModule,
   blankWorkspace,
-  blueprintIdForModule,
   findModule,
   removeModule,
   setFormLayout,
@@ -43,7 +44,7 @@ import {
   updateModuleMeta,
 } from "@/lib/crm/ops";
 import { CRM_MODULE_ICONS, type CrmModule, type CrmModuleIcon } from "@/lib/crm/types";
-import { BLUEPRINT_CHANGED_EVENT, loadBlueprintById, saveBlueprint } from "@/lib/blueprint/storage";
+import { BLUEPRINT_CHANGED_EVENT, loadBlueprintById } from "@/lib/blueprint/storage";
 
 const PANES = [
   { id: "fields", label: "Fields configurator" },
@@ -540,15 +541,14 @@ function EmbeddedBlueprint({ module: mod }: { module: CrmModule }) {
   const [readyId, setReadyId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = blueprintIdForModule(mod.id);
-    if (!loadBlueprintById(id)) saveBlueprint(documentFromModule(mod));
-    setReadyId(id);
+    ensureModuleBlueprint(mod);
+    setReadyId(moduleBlueprintId(mod));
   }, [mod]);
 
   useEffect(() => {
     if (!workspace) return;
     const onChange = () => {
-      const doc = loadBlueprintById(blueprintIdForModule(mod.id));
+      const doc = loadBlueprintById(moduleBlueprintId(mod), mod.fields);
       if (!doc) return;
       const next = structuredClone(workspace);
       const target = findModule(next, mod.id);
@@ -565,13 +565,22 @@ function EmbeddedBlueprint({ module: mod }: { module: CrmModule }) {
   }
 
   return (
-    <BlueprintWorkspaceProvider>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex justify-end border-b border-border-soft bg-surface px-3 py-1.5">
-          <BlueprintSaveToolbar />
+    <BlueprintFieldsProvider
+      fields={mod.fields}
+      onPersistFields={(next) => {
+        if (!workspace) return false;
+        save(setModuleFields(workspace, mod.id, next));
+        return true;
+      }}
+    >
+      <BlueprintWorkspaceProvider>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex justify-end border-b border-border-soft bg-surface px-3 py-1.5">
+            <BlueprintSaveToolbar />
+          </div>
+          <BlueprintConfiguratorShell blueprintId={readyId} />
         </div>
-        <BlueprintConfiguratorShell blueprintId={readyId} />
-      </div>
-    </BlueprintWorkspaceProvider>
+      </BlueprintWorkspaceProvider>
+    </BlueprintFieldsProvider>
   );
 }

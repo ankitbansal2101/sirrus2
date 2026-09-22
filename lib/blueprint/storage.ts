@@ -7,7 +7,7 @@ import {
 import type { BlueprintDocument } from "@/lib/blueprint/types";
 import { newEntityId } from "@/lib/blueprint/types";
 import { loadFieldsSchema } from "@/lib/fields-config/schema-storage";
-import { createDefaultLeadFields } from "@/lib/fields-config/types";
+import { createDefaultLeadFields, type FieldDefinition } from "@/lib/fields-config/types";
 import { schedulePrototypeDiskPush } from "@/lib/prototype-persist/push";
 
 /** Legacy single-document key — migrated into `BLUEPRINT_LIBRARY_KEY` on first read. */
@@ -27,12 +27,12 @@ export type BlueprintLibraryV1 = {
   blueprints: BlueprintDocument[];
 };
 
-function fieldRows() {
+function defaultFieldRows() {
   return loadFieldsSchema() ?? createDefaultLeadFields();
 }
 
-function migrateDoc(doc: BlueprintDocument): BlueprintDocument {
-  return migrateBlueprintDocument(doc, fieldRows());
+function migrateDoc(doc: BlueprintDocument, fieldRows?: FieldDefinition[]): BlueprintDocument {
+  return migrateBlueprintDocument(doc, fieldRows ?? defaultFieldRows());
 }
 
 function isBlueprintDoc(x: unknown): x is BlueprintDocument {
@@ -132,12 +132,12 @@ export function loadBlueprintOrDefault(): BlueprintDocument {
   return loadBlueprint() ?? migrateDoc(defaultBlueprintDocument());
 }
 
-/** One blueprint for the canvas editor (migrated). */
-export function loadBlueprintById(id: string): BlueprintDocument | null {
+/** One blueprint for the canvas editor (migrated). Pass module fields when editing a CRM module blueprint. */
+export function loadBlueprintById(id: string, fieldRows?: FieldDefinition[]): BlueprintDocument | null {
   const lib = readLibraryStored();
   const doc = lib.blueprints.find((b) => b.id === id);
   if (!doc) return null;
-  return migrateDoc(doc);
+  return migrateDoc(doc, fieldRows);
 }
 
 /** Upsert document in the library (by `doc.id`). */

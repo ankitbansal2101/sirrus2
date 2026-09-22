@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { WidgetStudio } from "@/components/widget-studio/widget-studio";
 
 export const metadata = {
-  title: "Widgets — sirus.ai",
+  title: "Widgets — sirrus.ai",
   description: "Design iframe widgets with an AI agent and host them on other marketplaces.",
 };
 

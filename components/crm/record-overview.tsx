@@ -5,15 +5,15 @@ import Link from "next/link";
 import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { moduleSlot } from "@/lib/crm/agent-slots";
 import { RecordEditorModal } from "@/components/crm/record-editor-modal";
+import { RecordStageChangeModal } from "@/components/crm/record-stage-change-modal";
 import { OverviewNodeBody } from "@/components/overview-canvas/overview-node-body";
 import { PairAiSummaryStrip } from "@/components/overview-canvas/pair-ai-summary-strip";
 import { IconChevronLeft, IconPencil } from "@/components/icons";
 import { insightForRecord } from "@/lib/crm/ai-summary-strip";
-import { dispatchCrmEvent } from "@/lib/crm/dispatch-workflows";
 import { displayFieldValue, fieldById, initialsFromName, recordStageLabel, recordTitle, stagePillStyle } from "@/lib/crm/display";
 import { formatDateTime, formatRelativeTime } from "@/lib/crm/format";
 import { useCrm } from "@/components/crm/crm-provider";
-import { findModule, updateRecord } from "@/lib/crm/ops";
+import { findModule } from "@/lib/crm/ops";
 import { normalizeWidgetKind, resolveOverviewCanvas, type OverviewCanvasNode } from "@/lib/crm/overview-canvas";
 import type { CrmModule, CrmRecord, CrmWorkspace } from "@/lib/crm/types";
 
@@ -27,6 +27,7 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
   );
   const [tab, setTab] = useState<"overview" | "activity" | string>("overview");
   const [editOpen, setEditOpen] = useState(false);
+  const [stageOpen, setStageOpen] = useState(false);
 
   if (!workspace || !mod || !rec || !canvas) {
     return (
@@ -47,27 +48,6 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
   });
   const activeTab = extraTabs.some((t) => t.id === tab) ? tab : tab === "activity" ? "activity" : "overview";
   const extraNodes = (canvas.tabs.find((t) => t.id === activeTab)?.nodes ?? []).filter(isExtraNode);
-
-  const setStage = (optionId: string) => {
-    if (!mod.stageFieldApiKey) return;
-    const previousValues = rec.values;
-    const next = updateRecord(workspace, mod.id, rec.id, { [mod.stageFieldApiKey]: optionId });
-    save(next);
-    const updated = findModule(next, mod.id)?.records.find((r) => r.id === rec.id);
-    void dispatchCrmEvent(
-      next,
-      {
-        type: "stage_changed",
-        moduleId: mod.id,
-        recordId: rec.id,
-        previousValues,
-        nextValues: updated?.values ?? { ...previousValues, [mod.stageFieldApiKey]: optionId },
-      },
-      save,
-    ).catch(() => {
-      /* ignore */
-    });
-  };
 
   return (
     <div className="page-canvas flex min-h-0 flex-1 flex-col">
@@ -94,7 +74,11 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {mod.stageFieldApiKey ? <StageSelect module={mod} record={rec} onStage={setStage} /> : null}
+            {mod.stageFieldApiKey ? (
+              <button type="button" onClick={() => setStageOpen(true)} className="btn-ghost py-1.5 text-xs">
+                Change stage
+              </button>
+            ) : null}
             <PageAgentBar slotKey={moduleSlot(mod.id, "record")} moduleLabel={mod.label} compact />
             <button type="button" onClick={() => setEditOpen(true)} className="btn-primary">
               <IconPencil className="size-3.5" />
@@ -137,7 +121,7 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
                   module={mod}
                   record={rec}
                   workspace={workspace}
-                  onStage={setStage}
+                  onStage={() => setStageOpen(true)}
                 />
               </div>
             </>
@@ -152,7 +136,7 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
               {extraNodes.length === 0 ? (
                 <EmptyTab label={extraTabs.find((t) => t.id === activeTab)?.label ?? "This tab"} />
               ) : (
-                <ExtraWidgetStack nodes={extraNodes} module={mod} record={rec} workspace={workspace} onStage={setStage} />
+                <ExtraWidgetStack nodes={extraNodes} module={mod} record={rec} workspace={workspace} onStage={() => setStageOpen(true)} />
               )}
             </div>
           ) : null}
@@ -161,6 +145,16 @@ export function RecordOverview({ moduleId, recordId }: { moduleId: string; recor
 
       {editOpen ? (
         <RecordEditorModal workspace={workspace} module={mod} record={rec} onClose={() => setEditOpen(false)} onSave={save} />
+      ) : null}
+      {stageOpen ? (
+        <RecordStageChangeModal
+          open
+          onClose={() => setStageOpen(false)}
+          workspace={workspace}
+          mod={mod}
+          record={rec}
+          onSaved={save}
+        />
       ) : null}
     </div>
   );
@@ -184,42 +178,6 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     >
       {children}
     </button>
-  );
-}
-
-function StageSelect({
-  module: mod,
-  record: rec,
-  onStage,
-}: {
-  module: CrmModule;
-  record: CrmRecord;
-  onStage: (optionId: string) => void;
-}) {
-  const stageField = mod.stageFieldApiKey ? mod.fields.find((f) => f.apiKey === mod.stageFieldApiKey) : undefined;
-  const current = stageField ? rec.values[stageField.apiKey] : "";
-  const label = recordStageLabel(mod, rec);
-  const pill = stagePillStyle(label);
-  return (
-    <label className="relative inline-flex items-center">
-      <span className="inline-flex min-w-[8rem] items-center justify-center rounded-lg border px-3 py-1.5 text-[12px] font-semibold" style={{ ...pill, borderColor: "transparent" }}>
-        {label || "Set stage"}
-      </span>
-      <select
-        aria-label="Change stage"
-        value={current}
-        onChange={(e) => {
-          if (e.target.value) onStage(e.target.value);
-        }}
-        className="absolute inset-0 cursor-pointer opacity-0"
-      >
-        {stageField?.options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

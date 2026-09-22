@@ -2,14 +2,14 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { SirusMark } from "@/components/brand/sirus-mark";
+import { SirrusMark } from "@/components/brand/sirrus-mark";
 import { useCrm } from "@/components/crm/crm-provider";
 
 function Splash({ copy }: { copy: string }) {
   return (
-    <div className="sirus-splash flex min-h-svh flex-col items-center justify-center gap-4">
-      <SirusMark className="size-12" />
-      <p className="display text-2xl text-ink">Sirus</p>
+    <div className="sirrus-splash flex min-h-svh flex-col items-center justify-center gap-4">
+      <SirrusMark className="size-12" />
+      <p className="display text-2xl text-ink">Sirrus</p>
       <p className="text-sm text-muted">{copy}</p>
     </div>
   );

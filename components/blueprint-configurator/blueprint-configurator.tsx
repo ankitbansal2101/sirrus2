@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   addEdge,
@@ -21,6 +21,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { readBlueprintDrag } from "@/components/blueprint-configurator/blueprint-palette";
 import { StageFieldOptionsPanel } from "@/components/blueprint-configurator/stage-field-options-panel";
+import { useBlueprintFieldRows, usePersistBlueprintFields } from "@/components/blueprint-configurator/blueprint-fields-context";
 import { useBlueprintWorkspace } from "@/components/blueprint-configurator/blueprint-workspace-context";
 import { StageInspector } from "@/components/blueprint-configurator/stage-inspector";
 import { BlueprintLabeledEdge } from "@/components/blueprint-configurator/blueprint-labeled-edge";
@@ -50,14 +51,7 @@ import {
   type SubstageGroupNodeData,
   type SubstageNodeData,
 } from "@/lib/blueprint/flow-bridge";
-import {
-  FIELDS_SCHEMA_CHANGED_EVENT,
-  FIELDS_SCHEMA_STORAGE_KEY,
-  fieldsToLeadFieldOptions,
-  listFieldsWithOptionChoices,
-  resolveFieldDefinitions,
-  resolveStageField,
-} from "@/lib/blueprint/from-fields-schema";
+import { fieldsToLeadFieldOptions, listFieldsWithOptionChoices, resolveStageField } from "@/lib/blueprint/from-fields-schema";
 import {
   addStagePicklistOption,
   patchStageFieldOptions,
@@ -131,7 +125,8 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   const draggingPaletteRef = useRef(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
-  const [fieldRows, setFieldRows] = useState<FieldDefinition[]>(() => resolveFieldDefinitions());
+  const fieldRows = useBlueprintFieldRows();
+  const persistModuleFields = usePersistBlueprintFields();
   const leadFieldOptions = useMemo(() => fieldsToLeadFieldOptions(fieldRows), [fieldRows]);
   const picklistDrivers = useMemo(() => listFieldsWithOptionChoices(fieldRows), [fieldRows]);
   const stagePickSource = useMemo(
@@ -139,26 +134,6 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
     [fieldRows, docMeta.stageField],
   );
   const stageSelectValue = stagePickSource?.apiKey ?? picklistDrivers[0]?.apiKey ?? "";
-
-  useLayoutEffect(() => {
-    setFieldRows(resolveFieldDefinitions());
-  }, [pathname]);
-
-  useEffect(() => {
-    const refreshFields = () => setFieldRows(resolveFieldDefinitions());
-    refreshFields();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === FIELDS_SCHEMA_STORAGE_KEY || e.key === null) refreshFields();
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", refreshFields);
-    window.addEventListener(FIELDS_SCHEMA_CHANGED_EVENT, refreshFields);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", refreshFields);
-      window.removeEventListener(FIELDS_SCHEMA_CHANGED_EVENT, refreshFields);
-    };
-  }, []);
 
   const reloadBlueprintFromStorage = useCallback(() => {
     const loaded = loadBlueprintById(blueprintId);
@@ -200,15 +175,22 @@ function BlueprintFlow({ blueprintId }: { blueprintId: string }) {
   /** So Backspace/Delete reach React Flow: it skips keys while focus is in inputs (`actInsideInputWithModifier: false`). */
   const persistFieldRows = useCallback(
     (next: FieldDefinition[]) => {
+      if (persistModuleFields) {
+        if (!persistModuleFields(next)) {
+          setSaveBanner("Could not save stage field on this module");
+          window.setTimeout(() => setSaveBanner(null), 3200);
+          return false;
+        }
+        return true;
+      }
       if (!saveFieldsSchema(next)) {
         setSaveBanner("Could not save stage field");
         window.setTimeout(() => setSaveBanner(null), 3200);
         return false;
       }
-      setFieldRows(next);
       return true;
     },
-    [setSaveBanner],
+    [persistModuleFields, setSaveBanner],
   );
 
   const handleAddStageOption = useCallback(

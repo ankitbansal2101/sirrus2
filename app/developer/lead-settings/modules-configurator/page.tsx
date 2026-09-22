@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ModulesConfigurator } from "@/components/modules-configurator/modules-configurator";
 
 export const metadata = {
-  title: "Modules — sirus.ai",
+  title: "Modules — sirrus.ai",
   description: "Browse modules and configure fields, form layout, and blueprint",
 };
 

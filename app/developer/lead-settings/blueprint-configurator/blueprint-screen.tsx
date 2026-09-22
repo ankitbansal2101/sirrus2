@@ -6,18 +6,15 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { BlueprintConfiguratorShell } from "@/components/blueprint-configurator/blueprint-configurator-shell";
 import { BlueprintListView } from "@/components/blueprint-configurator/blueprint-list-view";
 import { BlueprintSaveToolbar } from "@/components/blueprint-configurator/blueprint-save-toolbar";
+import { BlueprintFieldsProvider } from "@/components/blueprint-configurator/blueprint-fields-context";
 import { BlueprintWorkspaceProvider } from "@/components/blueprint-configurator/blueprint-workspace-context";
 import { DeveloperPageHeader } from "@/components/developer/developer-page-header";
 import { ModuleScopeBar } from "@/components/settings/module-scope-bar";
 import { useCrm } from "@/components/crm/crm-provider";
-import { crmBlueprintFromDocument, documentFromModule } from "@/lib/crm/blueprint-bridge";
-import { blueprintIdForModule, findModule } from "@/lib/crm/ops";
-import {
-  BLUEPRINT_CHANGED_EVENT,
-  blueprintDocumentExists,
-  loadBlueprintById,
-  saveBlueprint,
-} from "@/lib/blueprint/storage";
+import { crmBlueprintFromDocument } from "@/lib/crm/blueprint-bridge";
+import { ensureModuleBlueprint, moduleBlueprintId } from "@/lib/crm/module-blueprint";
+import { findModule, setModuleFields } from "@/lib/crm/ops";
+import { BLUEPRINT_CHANGED_EVENT, blueprintDocumentExists, loadBlueprintById } from "@/lib/blueprint/storage";
 
 function BlueprintEditorScreen({ blueprintId, openAi }: { blueprintId: string; openAi: boolean }) {
   const exists = useMemo(() => blueprintDocumentExists(blueprintId), [blueprintId]);
@@ -67,15 +64,14 @@ function ModuleBlueprintGate({ moduleId, openAi }: { moduleId: string; openAi: b
 
   useEffect(() => {
     if (!mod) return;
-    const id = blueprintIdForModule(mod.id);
-    if (!loadBlueprintById(id)) saveBlueprint(documentFromModule(mod));
-    setReadyId(id);
+    ensureModuleBlueprint(mod);
+    setReadyId(moduleBlueprintId(mod));
   }, [mod]);
 
   useEffect(() => {
     if (!mod || !workspace) return;
     const onChange = () => {
-      const doc = loadBlueprintById(blueprintIdForModule(mod.id));
+      const doc = loadBlueprintById(moduleBlueprintId(mod), mod.fields);
       if (!doc) return;
       const next = structuredClone(workspace);
       const target = findModule(next, mod.id);
@@ -106,7 +102,16 @@ function ModuleBlueprintGate({ moduleId, openAi }: { moduleId: string; openAi: b
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ModuleScopeBar noun="blueprint" />
-      <BlueprintEditorScreen key={readyId} blueprintId={readyId} openAi={openAi} />
+      <BlueprintFieldsProvider
+        fields={mod.fields}
+        onPersistFields={(next) => {
+          if (!workspace) return false;
+          save(setModuleFields(workspace, mod.id, next));
+          return true;
+        }}
+      >
+        <BlueprintEditorScreen key={readyId} blueprintId={readyId} openAi={openAi} />
+      </BlueprintFieldsProvider>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ListColumnPicker } from "@/components/crm/list-column-picker";
 import { ListFiltersPanel } from "@/components/crm/list-filters-panel";
 import { RecordEditorModal } from "@/components/crm/record-editor-modal";
+import { RecordStageChangeModal } from "@/components/crm/record-stage-change-modal";
 import { PageAgentBar } from "@/components/crm/page-agent-bar";
 import { moduleSlot } from "@/lib/crm/agent-slots";
 import { useCrm } from "@/components/crm/crm-provider";
@@ -41,6 +42,7 @@ export function RecordList({ moduleId }: { moduleId: string }) {
   const [stageTab, setStageTab] = useState("all");
   const [sort, setSort] = useState<ListSortKey>("updated");
   const [createOpen, setCreateOpen] = useState(false);
+  const [stageRecordId, setStageRecordId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [applied, setApplied] = useState<LeadFilterConfig | null>(null);
   const [saved, setSaved] = useState<SavedListFilter[]>([]);
@@ -88,6 +90,8 @@ export function RecordList({ moduleId }: { moduleId: string }) {
     const staged = stageTab === "all" ? pipelineRows : pipelineRows.filter((r) => recordMatchesStage(mod, r, stageTab));
     return sortRecords(mod, staged, sort);
   }, [mod, pipelineRows, stageTab, sort]);
+
+  const stageRecord = stageRecordId ? mod?.records.find((r) => r.id === stageRecordId) : undefined;
 
   if (!workspace || !mod) {
     return (
@@ -327,9 +331,17 @@ export function RecordList({ moduleId }: { moduleId: string }) {
                           return (
                             <td key={c.id} className="max-w-[14rem] truncate whitespace-nowrap border-b border-[#f0e8da] px-4 py-3 text-[13px] text-ink group-hover:bg-[#f7f1e6]">
                               {isStage ? (
-                                <span className="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={stagePillStyle(stageLabel)}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStageRecordId(r.id);
+                                  }}
+                                  className="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold hover:ring-2 hover:ring-accent/30"
+                                  style={stagePillStyle(stageLabel)}
+                                >
                                   {stageLabel || "—"}
-                                </span>
+                                </button>
                               ) : (
                                 value
                               )}
@@ -369,6 +381,16 @@ export function RecordList({ moduleId }: { moduleId: string }) {
       />
       {createOpen ? (
         <RecordEditorModal workspace={workspace} module={mod} onClose={() => setCreateOpen(false)} onSave={save} />
+      ) : null}
+      {stageRecord ? (
+        <RecordStageChangeModal
+          open
+          onClose={() => setStageRecordId(null)}
+          workspace={workspace}
+          mod={mod}
+          record={stageRecord}
+          onSaved={save}
+        />
       ) : null}
     </div>
   );

@@ -13,9 +13,11 @@ export function documentFromModule(mod: CrmModule): BlueprintDocument {
   const transitions = mod.blueprint.transitions.map((t) => {
     const from = byId.get(t.fromStageId)?.label ?? "";
     const to = byId.get(t.toStageId)?.label ?? "";
+    const base = createDefaultTransition(t.fromStageId, t.toStageId, from, to);
     return {
-      ...createDefaultTransition(t.fromStageId, t.toStageId, from, to),
+      ...base,
       id: t.id,
+      name: t.label?.trim() || base.name,
     };
   });
   return {

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { SirusMark } from "@/components/brand/sirus-mark";
+import { SirrusMark } from "@/components/brand/sirrus-mark";
 import { useCrm } from "@/components/crm/crm-provider";
 
 export default function CrmHomePage() {
@@ -16,8 +16,8 @@ export default function CrmHomePage() {
   }, [ready, workspace, router]);
 
   return (
-    <div className="sirus-splash flex flex-1 flex-col items-center justify-center gap-3">
-      <SirusMark className="size-10" />
+    <div className="sirrus-splash flex flex-1 flex-col items-center justify-center gap-3">
+      <SirrusMark className="size-10" />
       <p className="text-sm text-muted">Opening modules…</p>
     </div>
   );

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { ChartStudio } from "@/components/charts/chart-studio";
 
 export const metadata = {
-  title: "Charts — sirus.ai",
+  title: "Charts — sirrus.ai",
   description: "Ask an agent to build charts from any module, field, dimension, and measure.",
 };
 

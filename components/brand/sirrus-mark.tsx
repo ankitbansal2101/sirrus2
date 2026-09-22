@@ -1,4 +1,4 @@
-export function SirusMark({ className = "size-7" }: { className?: string }) {
+export function SirrusMark({ className = "size-7" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden>
       <rect width="32" height="32" rx="9" fill="#16140f" />
@@ -10,12 +10,12 @@ export function SirusMark({ className = "size-7" }: { className?: string }) {
   );
 }
 
-export function SirusWordmark({ inverted = false }: { inverted?: boolean }) {
+export function SirrusWordmark({ inverted = false }: { inverted?: boolean }) {
   return (
     <span className={`inline-flex items-center gap-2 ${inverted ? "text-rail-ink" : "text-ink"}`}>
-      <SirusMark className="size-7" />
+      <SirrusMark className="size-7" />
       <span className="font-display text-[19px] leading-none tracking-tight">
-        sirus
+        sirrus
         <span className={inverted ? "text-gold" : "text-accent"}>.ai</span>
       </span>
     </span>

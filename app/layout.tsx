@@ -18,7 +18,7 @@ const display = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Sirus — CRM",
+  title: "Sirrus — CRM",
   description: "A production CRM workspace for any industry.",
 };
 

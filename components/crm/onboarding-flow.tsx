@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SirusMark } from "@/components/brand/sirus-mark";
+import { SirrusMark } from "@/components/brand/sirrus-mark";
 import { IconArrowUpRight, IconCheckCircle, IconSparkle } from "@/components/icons";
 import { useCrm } from "@/components/crm/crm-provider";
 import { createWorkspace } from "@/lib/crm/ops";
@@ -65,9 +65,9 @@ export function OnboardingFlow() {
           <div className="absolute -right-16 top-16 size-72 rounded-full bg-gold/20 blur-3xl" />
           <div className="absolute -bottom-20 left-8 size-80 rounded-full bg-accent/25 blur-3xl" />
           <div className="relative flex items-center gap-2.5">
-            <SirusMark className="size-9" />
+            <SirrusMark className="size-9" />
             <span className="font-display text-2xl tracking-tight">
-              sirus<span className="text-gold">.ai</span>
+              sirrus<span className="text-gold">.ai</span>
             </span>
           </div>
           <div className="relative mt-auto max-w-md pb-6">
@@ -83,8 +83,8 @@ export function OnboardingFlow() {
 
         <main className="flex flex-col px-6 py-10 sm:px-10">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <SirusMark className="size-8" />
-            <span className="font-display text-xl">sirus.ai</span>
+            <SirrusMark className="size-8" />
+            <span className="font-display text-xl">sirrus.ai</span>
           </div>
           {existing ? (
             <p className="card mb-6 px-4 py-3 text-sm text-ink">

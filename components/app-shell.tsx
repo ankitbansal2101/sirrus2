@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { SirusMark } from "@/components/brand/sirus-mark";
+import { SirrusMark } from "@/components/brand/sirrus-mark";
 import { CommandPalette } from "@/components/command-palette";
 import {
   IconBell,
@@ -77,9 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="shrink-0 border-b border-border-soft bg-surface/90 px-3 backdrop-blur-md sm:px-4">
         <div className="flex h-14 items-center justify-between gap-3">
           <Link href={firstModuleHref} className="flex shrink-0 items-center gap-2.5">
-            <SirusMark className="size-8" />
+            <SirrusMark className="size-8" />
             <span className="hidden font-display text-[20px] tracking-tight text-ink sm:block">
-              sirus<span className="text-accent">.ai</span>
+              sirrus<span className="text-accent">.ai</span>
             </span>
           </Link>
           <button

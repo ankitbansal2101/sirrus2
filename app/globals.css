@@ -153,7 +153,7 @@ body {
   @apply relative flex w-full flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-medium tracking-wide transition;
 }
 
-.sirus-splash {
+.sirrus-splash {
   background:
     radial-gradient(800px 360px at 50% 0%, rgba(196, 165, 116, 0.28), transparent 60%),
     var(--color-canvas);

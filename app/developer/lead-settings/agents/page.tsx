@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { AgentsConfigurator } from "@/components/agents-configurator/agents-configurator";
 
 export const metadata = {
-  title: "Agents — sirus.ai",
+  title: "Agents — sirrus.ai",
   description: "Create AI agents with name, instructions, tools, and model settings",
 };
 
