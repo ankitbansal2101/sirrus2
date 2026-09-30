@@ -7,6 +7,7 @@ import type {
   BlueprintTransition,
 } from "@/lib/blueprint/types";
 import { DEFAULT_SUBSTAGE_FIELD_API_KEY } from "@/lib/blueprint/types";
+import { transitionCriteriaMatch } from "@/lib/blueprint/before-criteria";
 import type { LeadRecord } from "@/lib/leads/types";
 import { resolveStageField } from "@/lib/blueprint/from-fields-schema";
 import type { FieldDefinition } from "@/lib/fields-config/types";
@@ -41,9 +42,10 @@ export function stateFromStageValue(
   return st ?? doc.states[0] ?? null;
 }
 
-export function outgoingTransitions(doc: BlueprintDocument, sourceStateId: string): BlueprintTransition[] {
+export function outgoingTransitions(doc: BlueprintDocument, sourceStateId: string, values?: Record<string, string>, fields: FieldDefinition[] = []): BlueprintTransition[] {
   return doc.transitions.filter((t) => {
     if (!t.enabled || t.sourceStateId !== sourceStateId) return false;
+    if (values && !transitionCriteriaMatch(t.before?.criteria, values, fields)) return false;
     const target = doc.states.find((s) => s.id === t.targetStateId);
     const targetHasSubstages = (target?.substages?.length ?? 0) > 0;
     if (!targetHasSubstages) return true;
@@ -157,17 +159,21 @@ export function defaultSubstageIdForState(state: BlueprintState | undefined): st
 export function outgoingSubstageTransitions(
   state: BlueprintState | null | undefined,
   sourceSubstageId: string,
+  values?: Record<string, string>,
+  fields: FieldDefinition[] = [],
 ): BlueprintSubstageTransition[] {
   if (!state?.substageTransitions?.length) return [];
-  return state.substageTransitions.filter((t) => t.enabled && t.sourceSubstageId === sourceSubstageId);
+  return state.substageTransitions.filter((t) => t.enabled && t.sourceSubstageId === sourceSubstageId && (!values || transitionCriteriaMatch(t.before?.criteria, values, fields)));
 }
 
 export function outgoingSubstageExits(
   state: BlueprintState | null | undefined,
   sourceSubstageId: string,
+  values?: Record<string, string>,
+  fields: FieldDefinition[] = [],
 ): BlueprintSubstageExit[] {
   if (!state?.substageExits?.length) return [];
-  return state.substageExits.filter((t) => t.enabled && t.sourceSubstageId === sourceSubstageId);
+  return state.substageExits.filter((t) => t.enabled && t.sourceSubstageId === sourceSubstageId && (!values || transitionCriteriaMatch(t.before?.criteria, values, fields)));
 }
 
 export function targetStateForExit(

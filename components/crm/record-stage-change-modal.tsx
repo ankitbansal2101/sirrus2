@@ -47,8 +47,8 @@ export function RecordStageChangeModal({ open, onClose, workspace, mod, record, 
 
   const allowed = useMemo(() => {
     if (!doc || !currentState) return [];
-    return outgoingTransitions(doc, currentState.id);
-  }, [doc, currentState]);
+    return outgoingTransitions(doc, currentState.id, record.values, mod.fields);
+  }, [doc, currentState, record.values, mod.fields]);
 
   useEffect(() => {
     setMounted(true);

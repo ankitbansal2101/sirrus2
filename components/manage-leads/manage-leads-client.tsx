@@ -477,8 +477,9 @@ export function ManageLeadsClient() {
 
   const allowedStageTransitions = useMemo(() => {
     if (!blueprint || !currentState) return [];
-    return outgoingTransitions(blueprint, currentState.id);
-  }, [blueprint, currentState]);
+    if (!selectedLead) return [];
+    return outgoingTransitions(blueprint, currentState.id, selectedLead.values, fields);
+  }, [blueprint, currentState, selectedLead, fields]);
 
   const currentSubstage = useMemo(() => {
     if (!blueprint || !currentState || !selectedLead) return null;
@@ -505,13 +506,13 @@ export function ManageLeadsClient() {
 
   const allowedSubstage = useMemo(() => {
     if (!substageContextState || !flowSubstageId) return [];
-    return outgoingSubstageTransitions(substageContextState, flowSubstageId);
-  }, [substageContextState, flowSubstageId]);
+    return outgoingSubstageTransitions(substageContextState, flowSubstageId, selectedLead?.values, fields);
+  }, [substageContextState, flowSubstageId, selectedLead?.values, fields]);
 
   const allowedExits = useMemo(() => {
     if (!currentState || !flowSubstageId) return [];
-    return outgoingSubstageExits(currentState, flowSubstageId);
-  }, [currentState, flowSubstageId]);
+    return outgoingSubstageExits(currentState, flowSubstageId, selectedLead?.values, fields);
+  }, [currentState, flowSubstageId, selectedLead?.values, fields]);
 
   const useSubstageExitTransitions = allowedExits.length > 0;
 

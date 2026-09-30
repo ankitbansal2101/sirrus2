@@ -11,8 +11,9 @@ import { shapeTransitionFormFieldStorage } from "@/lib/blueprint/transition-form
 import { IconPlus, IconTrash } from "@/components/icons";
 import type { FieldDefinition } from "@/lib/fields-config/types";
 import { optionsSorted } from "@/lib/fields-config/types";
+import { CRITERION_OPERATOR_LABELS, operatorsForField } from "@/lib/blueprint/before-criteria";
 
-type PhaseTab = "during" | "after";
+type PhaseTab = "before" | "during" | "after";
 
 type Props = {
   transition: TransitionAutomation;
@@ -428,6 +429,7 @@ export function TransitionInspector({
       <div className="flex shrink-0 border-b border-border-soft px-1 pt-1">
         {(
           [
+            ["before", "Before"],
             ["during", "During"],
             ["after", "After"],
           ] as const
@@ -446,6 +448,67 @@ export function TransitionInspector({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2.5 text-xs">
+        {phase === "before" ? (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-ink">When is this transition available?</p>
+              <p className="mt-1 text-[10px] leading-snug text-muted">Every criterion below must match the record for this move to appear.</p>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted">Criteria</h3>
+              <button
+                type="button"
+                disabled={!fieldDefinitions.length}
+                className="rounded-md bg-accent px-2 py-1 text-[10px] font-semibold text-white shadow-sm hover:opacity-95"
+                onClick={() => {
+                  const field = fieldDefinitions[0];
+                  const criterion = { id: newEntityId("crit"), fieldId: field?.apiKey ?? "", fieldLabel: field?.label ?? "", operator: "equals" as const, value: "" };
+                  onChange({ ...transition, before: { criteria: [...(transition.before?.criteria ?? []), criterion] } });
+                }}
+              >+ Add criteria</button>
+            </div>
+            {!fieldDefinitions.length ? <p className="rounded-lg border border-dashed border-border-soft bg-white p-2 text-[10px] text-muted">Add fields in Fields first.</p> : null}
+            <ul className="space-y-2">
+              {(transition.before?.criteria ?? []).map((criterion, idx) => {
+                const defn = fieldDefByApiKey(fieldDefinitions, criterion.fieldId);
+                const allowed = operatorsForField(defn);
+                const operator = allowed.includes(criterion.operator) ? criterion.operator : allowed[0]!;
+                const choices = defn ? optionsSorted(defn) : [];
+                const noValue = operator === "is_empty" || operator === "is_not_empty";
+                const optionValue = defn?.dataType === "picklist" || defn?.dataType === "radio" || defn?.dataType === "multi_select";
+                const dateValue = defn?.dataType === "date" || defn?.dataType === "date_time";
+                const numericValue = defn?.dataType === "number" || defn?.dataType === "decimal" || defn?.dataType === "formula";
+                return (
+                  <li key={criterion.id} className="rounded-lg border border-border-soft bg-white p-2 shadow-sm">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-muted">Criteria {idx + 1}</span>
+                      <button type="button" onClick={() => onChange({ ...transition, before: { criteria: (transition.before?.criteria ?? []).filter((c) => c.id !== criterion.id) } })} className="text-[10px] font-semibold text-red-600 hover:underline" aria-label="Remove criteria">Remove</button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      <select value={criterion.fieldId} onChange={(e) => {
+                        const nextDef = fieldDefByApiKey(fieldDefinitions, e.target.value);
+                        const nextOps = operatorsForField(nextDef);
+                        onChange({ ...transition, before: { criteria: (transition.before?.criteria ?? []).map((c) => c.id === criterion.id ? { ...c, fieldId: e.target.value, fieldLabel: nextDef?.label ?? "", operator: nextOps[0]!, value: "" } : c) } });
+                      }} className="w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs" aria-label="Criteria field">
+                        {fieldDefinitions.map((f) => <option key={f.apiKey} value={f.apiKey}>{f.label}</option>)}
+                      </select>
+                      <select value={operator} onChange={(e) => onChange({ ...transition, before: { criteria: (transition.before?.criteria ?? []).map((c) => c.id === criterion.id ? { ...c, operator: e.target.value as typeof c.operator, value: "" } : c) } })} className="w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs" aria-label="Criteria operator">
+                        {allowed.map((op) => <option key={op} value={op}>{CRITERION_OPERATOR_LABELS[op]}</option>)}
+                      </select>
+                      {!noValue ? optionValue ? (
+                        <select value={criterion.value} onChange={(e) => onChange({ ...transition, before: { criteria: (transition.before?.criteria ?? []).map((c) => c.id === criterion.id ? { ...c, value: e.target.value } : c) } })} className="w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs" aria-label="Criteria value">
+                          <option value="">Select value…</option>{choices.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                        </select>
+                      ) : (
+                        <input type={dateValue ? (defn?.dataType === "date_time" ? "datetime-local" : "date") : numericValue ? "number" : "text"} step={defn?.dataType === "decimal" ? "any" : undefined} value={criterion.value} onChange={(e) => onChange({ ...transition, before: { criteria: (transition.before?.criteria ?? []).map((c) => c.id === criterion.id ? { ...c, value: e.target.value } : c) } })} className="w-full rounded-md border border-border-soft bg-white px-1.5 py-1 text-xs" placeholder="Value" aria-label="Criteria value" />
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
         {phase === "during" ? (
           <div className="space-y-4">
             <p className="text-[11px] font-semibold text-ink">Add actions and fields</p>

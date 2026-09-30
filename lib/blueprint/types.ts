@@ -161,8 +161,25 @@ export type TransitionAutomation = {
   enabled: boolean;
   /** During: what the rep sees on the move confirmation screen. */
   form: TransitionDuringForm;
+  /** Before: all configured field criteria must match for the transition to be available. */
+  before?: { criteria: BlueprintCriterion[] };
   /** After: field updates, auto tasks, cross-module creates. */
   after: BlueprintAfterBlock;
+};
+
+export type BlueprintCriterionOperator =
+  | "is_empty" | "is_not_empty"
+  | "equals" | "not_equals" | "contains" | "not_contains"
+  | "greater_than" | "greater_or_equal" | "less_than" | "less_or_equal"
+  | "includes" | "does_not_include";
+
+/** A field-value rule used to decide whether a transition is available. */
+export type BlueprintCriterion = {
+  id: string;
+  fieldId: string;
+  fieldLabel: string;
+  operator: BlueprintCriterionOperator;
+  value: string;
 };
 
 /** Transition between two sub-stages within one parent stage (main stage unchanged). */
@@ -230,6 +247,7 @@ function defaultTransitionAutomation(name: string, idPrefix = "tr"): TransitionA
       taskMandatory: false,
       tools: [],
     },
+    before: { criteria: [] },
     after: {
       fieldUpdates: [],
       autoTasks: [],
@@ -280,4 +298,3 @@ export function createDefaultSubstageExit(
 export function emptyAfterBlock(): BlueprintAfterBlock {
   return { fieldUpdates: [], autoTasks: [], createRecords: [] };
 }
-

@@ -195,12 +195,28 @@ export function migrateTransition(
   raw: Record<string, unknown>,
   labelOf: (apiKey: string) => string = buildFieldLabelLookup(createDefaultLeadFields()),
 ): BlueprintTransition {
+  const rawBefore = raw.before && typeof raw.before === "object" ? (raw.before as Record<string, unknown>) : {};
+  const criteriaRaw = Array.isArray(rawBefore.criteria) ? rawBefore.criteria : [];
+  const criteria = criteriaRaw.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const c = item as Record<string, unknown>;
+    if (typeof c.fieldId !== "string" || !c.fieldId) return [];
+    const operators = ["is_empty", "is_not_empty", "equals", "not_equals", "contains", "not_contains", "greater_than", "greater_or_equal", "less_than", "less_or_equal", "includes", "does_not_include"];
+    return [{
+      id: typeof c.id === "string" ? c.id : newEntityId("crit"),
+      fieldId: c.fieldId,
+      fieldLabel: typeof c.fieldLabel === "string" ? c.fieldLabel : labelOf(c.fieldId),
+      operator: (operators.includes(String(c.operator)) ? c.operator : "equals") as import("@/lib/blueprint/types").BlueprintCriterionOperator,
+      value: typeof c.value === "string" ? c.value : "",
+    }];
+  });
   const formUnknown = raw.form as Record<string, unknown> | undefined;
   if (formUnknown && Array.isArray(formUnknown.fields)) {
     const tr = raw as unknown as BlueprintTransition;
     const formRecord = { ...(tr.form as unknown as Record<string, unknown>) };
     return {
       ...tr,
+      before: { criteria },
       form: finalizeTransitionForm(formRecord, []),
       after: normalizeBlueprintAfterBlock(tr.after),
     };
@@ -254,6 +270,7 @@ export function migrateTransition(
     targetSubstageId,
     name: String(raw.name ?? ""),
     enabled: raw.enabled !== false,
+    before: { criteria },
     form: finalizeTransitionForm(
       {
         message: typeof during?.message === "string" ? during.message : "",
@@ -354,6 +371,7 @@ function normalizeSubstageExit(raw: unknown, labelOf: (apiKey: string) => string
     id: legacy.id,
     name: legacy.name,
     enabled: legacy.enabled,
+    before: legacy.before,
     form: legacy.form,
     after: legacy.after,
     sourceSubstageId,
@@ -375,6 +393,7 @@ function normalizeSubstageTransition(raw: unknown, labelOf: (apiKey: string) => 
     id: legacy.id,
     name: legacy.name,
     enabled: legacy.enabled,
+    before: legacy.before,
     form: legacy.form,
     after: legacy.after,
     sourceSubstageId: String(o.sourceSubstageId ?? o.sourceStateId ?? ""),

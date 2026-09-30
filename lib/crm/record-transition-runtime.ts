@@ -27,6 +27,7 @@ import type { FieldDefinition } from "@/lib/fields-config/types";
 import type { CrmModule, CrmRecord, CrmWorkspace } from "@/lib/crm/types";
 import { createRecord, findModule, updateRecord } from "@/lib/crm/ops";
 import { newCrmId } from "@/lib/crm/ids";
+import { transitionCriteriaMatch } from "@/lib/blueprint/before-criteria";
 
 export function transitionFormDraftKey(t: TransitionAutomation, row: TransitionFormField) {
   return `${t.id}:${row.id}`;
@@ -46,6 +47,9 @@ export function validateTransitionAutomation(
   fieldDefs: FieldDefinition[],
   record: CrmRecord | null,
 ): string | null {
+  if (record && !transitionCriteriaMatch(t.before?.criteria, record.values, fieldDefs)) {
+    return "This transition is no longer available because its criteria are not met.";
+  }
   const lead = record ? asLeadShape(record) : null;
   for (const f of t.form.fields) {
     const k = transitionFormDraftKey(t, f);
