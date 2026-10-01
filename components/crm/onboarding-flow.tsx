@@ -67,7 +67,7 @@ export function OnboardingFlow() {
           <div className="relative flex items-center gap-2.5">
             <SirrusMark className="size-9" />
             <span className="font-display text-2xl tracking-tight">
-              sirrus<span className="text-gold">.ai</span>
+              Ankit <span className="text-gold">CRM</span>
             </span>
           </div>
           <div className="relative mt-auto max-w-md pb-6">
@@ -84,7 +84,7 @@ export function OnboardingFlow() {
         <main className="flex flex-col px-6 py-10 sm:px-10">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <SirrusMark className="size-8" />
-            <span className="font-display text-xl">sirrus.ai</span>
+            <span className="font-display text-xl">Ankit CRM</span>
           </div>
           {existing ? (
             <p className="card mb-6 px-4 py-3 text-sm text-ink">

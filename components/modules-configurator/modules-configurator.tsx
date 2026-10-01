@@ -34,6 +34,7 @@ import {
 import { BlueprintFieldsProvider } from "@/components/blueprint-configurator/blueprint-fields-context";
 import { crmBlueprintFromDocument } from "@/lib/crm/blueprint-bridge";
 import { ensureModuleBlueprint, moduleBlueprintId } from "@/lib/crm/module-blueprint";
+import { addDemoLeads } from "@/lib/crm/sample-leads";
 import {
   addModule,
   blankWorkspace,
@@ -398,6 +399,7 @@ function ModuleHub({
 
 function ModuleDetails({ module: selected, onDeleted }: { module: CrmModule; onDeleted: () => void }) {
   const { workspace, save } = useCrm();
+  const [sampleMessage, setSampleMessage] = useState("");
   if (!workspace) return null;
 
   const patch = (p: Parameters<typeof updateModuleMeta>[2]) => save(updateModuleMeta(workspace, selected.id, p));
@@ -406,6 +408,20 @@ function ModuleDetails({ module: selected, onDeleted }: { module: CrmModule; onD
     <section className="card p-6">
       <h2 className="display text-2xl text-ink">Module details</h2>
       <p className="mt-1 text-sm text-muted">Name, rail icon, and listing label. Records of this module open from the left rail.</p>
+      {selected.apiKey === "leads" ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-[#f4efe6] px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">Populate this Leads module</p>
+            <p className="mt-0.5 text-xs text-muted">Add missing synthetic leads and refresh this module with realistic call and WhatsApp activity fields for NBA evaluation.</p>
+          </div>
+          <button type="button" className="btn-accent shrink-0" onClick={() => {
+            const result = addDemoLeads(workspace);
+            save(result.workspace);
+            setSampleMessage(result.added ? `${result.added} sample lead records added; activity fields are ready.` : "Leads fields and synthetic call/WhatsApp activity are up to date.");
+          }}>Add / update sample data</button>
+          {sampleMessage ? <p role="status" className="w-full text-xs font-medium text-accent">{sampleMessage}</p> : null}
+        </div>
+      ) : null}
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="block text-xs font-medium text-muted">
           Label

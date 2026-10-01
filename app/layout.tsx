@@ -18,8 +18,8 @@ const display = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Sirrus — CRM",
-  description: "A production CRM workspace for any industry.",
+  title: "Ankit CRM",
+  description: "Ankit CRM workspace.",
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@ import { newCrmId, nextDisplayId, slugifyCrm } from "@/lib/crm/ids";
 import { emptyCustomModule } from "@/lib/crm/module-factory";
 import { emptyCustomAgent } from "@/lib/crm/custom-agent";
 import { industryById } from "@/lib/crm/templates";
+import { addDemoLeads } from "@/lib/crm/sample-leads";
 import type {
   AgentWorkflow,
   CrmAgentKind,
@@ -41,7 +42,7 @@ export function createWorkspace(input: {
     const allow = new Set(input.includeModuleApiKeys);
     modules = modules.filter((m) => allow.has(m.apiKey));
   }
-  return {
+  const workspace: CrmWorkspace = {
     version: 1,
     orgName: input.orgName.trim() || "My organization",
     industryId: industry.id,
@@ -54,6 +55,10 @@ export function createWorkspace(input: {
     marketplaceWidgets: [],
     charts: [],
   };
+  if (input.industryId === "real_estate" && workspace.modules.some((module) => module.apiKey === "leads")) {
+    return addDemoLeads(workspace).workspace;
+  }
+  return workspace;
 }
 
 export function findModule(ws: CrmWorkspace, moduleId: string): CrmModule | undefined {

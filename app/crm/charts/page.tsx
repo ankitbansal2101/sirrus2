@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { ChartStudio } from "@/components/charts/chart-studio";
 
 export const metadata = {
-  title: "Charts — sirrus.ai",
+  title: "Charts — Ankit CRM",
   description: "Ask an agent to build charts from any module, field, dimension, and measure.",
 };
 

@@ -9,7 +9,7 @@ function Splash({ copy }: { copy: string }) {
   return (
     <div className="sirrus-splash flex min-h-svh flex-col items-center justify-center gap-4">
       <SirrusMark className="size-12" />
-      <p className="display text-2xl text-ink">Sirrus</p>
+      <p className="display text-2xl text-ink">Ankit CRM</p>
       <p className="text-sm text-muted">{copy}</p>
     </div>
   );

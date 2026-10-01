@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CRM_CHANGED_EVENT, loadCrmWorkspace, saveCrmWorkspace } from "@/lib/crm/storage";
 import type { CrmWorkspace } from "@/lib/crm/types";
+import { addDemoLeads } from "@/lib/crm/sample-leads";
 
 type CrmContextValue = {
   workspace: CrmWorkspace | null;
@@ -18,7 +19,14 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   const reload = useCallback(() => {
-    setWorkspace(loadCrmWorkspace());
+    const loaded = loadCrmWorkspace();
+    if (loaded?.industryId === "real_estate" && loaded.modules.some((module) => module.apiKey === "leads" || module.pluralLabel.toLowerCase() === "leads")) {
+      const migrated = addDemoLeads(loaded).workspace;
+      if (JSON.stringify(loaded) !== JSON.stringify(migrated)) saveCrmWorkspace(migrated);
+      setWorkspace(migrated);
+    } else {
+      setWorkspace(loaded);
+    }
     setReady(true);
   }, []);
 

@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { AgentsConfigurator } from "@/components/agents-configurator/agents-configurator";
 
 export const metadata = {
-  title: "Agents — sirrus.ai",
+  title: "Agents — Ankit CRM",
   description: "Create AI agents with name, instructions, tools, and model settings",
 };
 

@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ModulesConfigurator } from "@/components/modules-configurator/modules-configurator";
 
 export const metadata = {
-  title: "Modules — sirrus.ai",
+  title: "Modules — Ankit CRM",
   description: "Browse modules and configure fields, form layout, and blueprint",
 };
 

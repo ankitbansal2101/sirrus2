@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href={firstModuleHref} className="flex shrink-0 items-center gap-2.5">
             <SirrusMark className="size-8" />
             <span className="hidden font-display text-[20px] tracking-tight text-ink sm:block">
-              sirrus<span className="text-accent">.ai</span>
+              Ankit <span className="text-accent">CRM</span>
             </span>
           </Link>
           <button
@@ -146,6 +146,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             })
           )}
+          <Link href="/crm/next-best-action" title="Next best actions" className={railClass(pathname.startsWith("/crm/next-best-action"))}>
+            <IconSparkle className="size-5" />
+            <span className="max-w-full truncate">Next best</span>
+          </Link>
           {modules.length > 0 ? (
             <Link href="/crm/charts" title="Charts" className={railClass(pathname.startsWith("/crm/charts"))}>
               <IconChart className="size-5" />
